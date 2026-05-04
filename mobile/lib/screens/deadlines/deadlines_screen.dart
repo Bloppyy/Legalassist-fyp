@@ -235,8 +235,8 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> with SingleTickerProv
             ),
             if (d['case_file'] != null)
               Text('Case: ${d['case_file']['case_number']}', style: const TextStyle(fontSize: 12)),
-            if (d['court_directions'] != null && (d['court_directions'] as String).isNotEmpty)
-              Text(d['court_directions'], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            if (d['remarks'] != null && (d['remarks'] as String).isNotEmpty)
+              Text(d['remarks'], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           ],
         ),
         trailing: IconButton(

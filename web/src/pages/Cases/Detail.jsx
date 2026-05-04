@@ -3,9 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getCase, getCaseHistory, updateCase } from '../../api/cases';
 import { getDeadlines, createDeadline, updateDeadline, toggleComplete, deleteDeadline } from '../../api/deadlines';
 import { useAuth } from '../../context/AuthContext';
+import CaseTimeline from './CaseTimeline';
 import styles from './detail.module.css';
 
-const EMPTY_DL = { title: '', court_name: '', deadline_date: '', court_directions: '' };
+const EMPTY_DL = { title: '', court_name: '', deadline_date: '', remarks: '' };
 
 function isOverdue(dateStr, completed) {
   if (completed) return false;
@@ -98,7 +99,7 @@ export default function CaseDetail() {
       title: d.title ?? '',
       court_name: d.court_name ?? '',
       deadline_date: d.deadline_date?.slice(0, 10) ?? '',
-      court_directions: d.court_directions ?? '',
+      remarks: d.remarks ?? '',
     });
     setShowDlForm(true);
     setDlError('');
@@ -236,7 +237,7 @@ export default function CaseDetail() {
                   <div className={styles.field}><label>Court Name *</label><input value={dlForm.court_name} onChange={(e) => setDlForm({ ...dlForm, court_name: e.target.value })} required /></div>
                   <div className={styles.field}><label>Date *</label><input type="date" value={dlForm.deadline_date} onChange={(e) => setDlForm({ ...dlForm, deadline_date: e.target.value })} required /></div>
                 </div>
-                <div className={styles.field}><label>Court Directions / Other Remarks</label><textarea rows={2} value={dlForm.court_directions} onChange={(e) => setDlForm({ ...dlForm, court_directions: e.target.value })} /></div>
+                <div className={styles.field}><label>Remarks</label><textarea rows={2} value={dlForm.remarks} onChange={(e) => setDlForm({ ...dlForm, remarks: e.target.value })} /></div>
                 <div className={styles.formActions}>
                   <button type="button" onClick={() => setShowDlForm(false)}>Cancel</button>
                   <button type="submit" className={styles.btnPrimary} disabled={dlSaving}>{dlSaving ? 'Saving…' : 'Save'}</button>
@@ -268,7 +269,7 @@ export default function CaseDetail() {
                     <td><strong>{d.title}</strong></td>
                     <td>{d.court_name}</td>
                     <td className={overdue ? styles.overdue : ''}>{new Date(d.deadline_date).toLocaleDateString()}</td>
-                    <td style={{ fontSize: 13, maxWidth: 200 }}>{d.court_directions ?? '—'}</td>
+                    <td style={{ fontSize: 13, maxWidth: 200 }}>{d.remarks ?? '—'}</td>
                     <td style={{ fontSize: 13 }}>
                       {d.is_completed ? <span style={{ color: 'var(--color-success)' }}>Done</span>
                         : overdue ? <span className={styles.overdue}>Overdue</span>
@@ -290,6 +291,11 @@ export default function CaseDetail() {
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* Case Timeline */}
+      <div className={styles.section} style={{ marginTop: 20 }}>
+        <CaseTimeline caseId={id} canWrite={canWrite} />
       </div>
 
       {/* Case History */}

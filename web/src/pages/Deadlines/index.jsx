@@ -4,7 +4,7 @@ import { getCases } from '../../api/cases';
 import { useAuth } from '../../context/AuthContext';
 import styles from './styles.module.css';
 
-const EMPTY_FORM = { title: '', case_id: '', court_name: '', deadline_date: '', court_directions: '' };
+const EMPTY_FORM = { title: '', case_id: '', court_name: '', deadline_date: '', remarks: '' };
 
 function isOverdue(dateStr, completed) {
   if (completed) return false;
@@ -47,7 +47,7 @@ export default function Deadlines() {
       case_id: d.case_id ?? '',
       court_name: d.court_name ?? '',
       deadline_date: d.deadline_date?.slice(0, 10) ?? '',
-      court_directions: d.court_directions ?? '',
+      remarks: d.remarks ?? '',
     });
     setShowForm(true);
     setError('');
@@ -110,7 +110,7 @@ export default function Deadlines() {
               </div>
             </div>
             <div className={styles.field}><label>Court Name *</label><input value={form.court_name} onChange={(e) => setForm({ ...form, court_name: e.target.value })} required placeholder="e.g. Mahkamah Tinggi Melaka" /></div>
-            <div className={styles.field}><label>Court Directions / Other Remarks</label><textarea rows={2} value={form.court_directions} onChange={(e) => setForm({ ...form, court_directions: e.target.value })} /></div>
+            <div className={styles.field}><label>Remarks</label><textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} /></div>
             <div className={styles.actions}>
               <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
               <button type="submit" className={styles.btnPrimary} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
@@ -128,7 +128,7 @@ export default function Deadlines() {
                 <th>Court</th>
                 <th>Date</th>
                 <th>Case</th>
-                <th>Court Directions</th>
+                <th>Remarks</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -143,7 +143,7 @@ export default function Deadlines() {
                     <td>{d.court_name}</td>
                     <td className={overdue ? styles.overdue : ''}>{new Date(d.deadline_date).toLocaleDateString()}</td>
                     <td>{d.case_file?.case_number ?? '—'}</td>
-                    <td style={{ maxWidth: 200, fontSize: 13 }}>{d.court_directions ?? '—'}</td>
+                    <td style={{ maxWidth: 200, fontSize: 13 }}>{d.remarks ?? '—'}</td>
                     <td>
                       {d.is_completed ? (
                         <span style={{ color: 'var(--color-success)', fontSize: 13 }}>Done</span>

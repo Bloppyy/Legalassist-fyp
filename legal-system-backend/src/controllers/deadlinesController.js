@@ -65,7 +65,7 @@ const getOne = async (req, res, next) => {
  */
 const create = async (req, res, next) => {
   try {
-    const { title, court_name, deadline_date, case_id, court_directions } = req.body;
+    const { title, court_name, deadline_date, case_id, remarks } = req.body;
 
     const { data, error } = await supabase
       .from('court_deadlines')
@@ -74,7 +74,7 @@ const create = async (req, res, next) => {
         court_name,
         deadline_date,
         case_id: case_id || null,
-        court_directions: court_directions || null,
+        remarks: remarks || null,
         created_by: req.user.id,
         is_completed: false,
       })
@@ -103,11 +103,11 @@ const update = async (req, res, next) => {
 
     if (fetchError || !existing) return next(createError(404, 'Court deadline not found'));
 
-    const { title, court_name, deadline_date, case_id, court_directions, is_completed } = req.body;
+    const { title, court_name, deadline_date, case_id, remarks, is_completed } = req.body;
 
     const { data, error } = await supabase
       .from('court_deadlines')
-      .update({ title, court_name, deadline_date, case_id, court_directions, is_completed })
+      .update({ title, court_name, deadline_date, case_id, remarks, is_completed })
       .eq('id', req.params.id)
       .select()
       .single();

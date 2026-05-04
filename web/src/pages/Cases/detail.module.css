@@ -35,3 +35,101 @@
 .error { background: var(--color-danger-light); color: var(--color-danger); padding: 8px 12px; border-radius: var(--radius); font-size: 13px; margin-bottom: 8px; }
 .overdue { color: var(--color-danger); font-weight: 500; }
 .descBlock { font-size: 14px; color: var(--color-text-muted); white-space: pre-wrap; line-height: 1.6; }
+
+/* ── Modal (reused from Documents) ─────────────────────────────────────── */
+.modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--color-surface); border-radius: var(--radius); padding: 28px; width: 440px; max-width: 92vw; box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 16px; }
+.modal h3 { font-size: 16px; font-weight: 600; }
+.modalActions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── Timeline ───────────────────────────────────────────────────────────── */
+.timeline {
+  position: relative;
+  padding: 16px 20px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 39px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.timelineRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.1s;
+  position: relative;
+}
+.timelineRow:hover { background: var(--color-bg); }
+.rowSelected { background: var(--color-primary-light) !important; }
+.rowCompleted { opacity: 0.55; }
+
+.nodeCircle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.nodeCurrent {
+  animation: nodePulse 2s ease-in-out infinite;
+}
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--pulse-color, #1c64f2); opacity: 1; }
+  50%       { box-shadow: 0 0 0 8px transparent; }
+}
+
+.nodeContent { flex: 1; min-width: 0; padding-top: 6px; }
+.nodeTitle { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nodeMeta { font-size: 12px; color: var(--color-text-muted); display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.nodeDot { opacity: 0.4; }
+
+.currentBadge { background: var(--color-primary-light); color: var(--color-primary); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; }
+.aiBadge { background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; }
+
+/* ── Detail side panel ──────────────────────────────────────────────────── */
+.panelOverlay { position: fixed; inset: 0; z-index: 150; }
+.detailPanel {
+  position: fixed;
+  top: var(--topbar-height, 60px);
+  right: 0;
+  width: 360px;
+  height: calc(100vh - var(--topbar-height, 60px));
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+  z-index: 151;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: slideIn 0.18s ease;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.panelTop { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 20px 12px; border-bottom: 1px solid var(--color-border); gap: 8px; }
+.stageTypeBadge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+.panelTitle { font-size: 16px; font-weight: 700; padding: 16px 20px 0; }
+
+.panelMeta { padding: 12px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--color-border); }
+.panelMetaRow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 13px; }
+.panelMetaLabel { font-size: 12px; color: var(--color-text-muted); font-weight: 500; flex-shrink: 0; }
+
+.panelDirections { padding: 14px 20px; border-bottom: 1px solid var(--color-border); }
+.panelActions { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }

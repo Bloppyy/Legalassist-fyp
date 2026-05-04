@@ -22,7 +22,7 @@ router.post(
     body('court_name').notEmpty().withMessage('court_name is required'),
     body('deadline_date').isDate().withMessage('deadline_date must be a valid date (YYYY-MM-DD)'),
     body('case_id').optional().isUUID().withMessage('case_id must be a valid UUID'),
-    body('court_directions').optional().isString(),
+    body('remarks').optional().isString(),
   ],
   validate,
   deadlinesController.create
