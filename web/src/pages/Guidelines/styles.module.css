@@ -1,0 +1,33 @@
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.header h2 { font-size: 20px; font-weight: 700; }
+.filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.filters input { max-width: 320px; }
+.formCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
+.formCard h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.form { display: flex; flex-direction: column; gap: 14px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.error { background: var(--color-danger-light); color: var(--color-danger); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
+.grid { display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--color-border); gap: 12px; }
+.cardTitle { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+.cardSection { font-size: 12px; color: var(--color-text-muted); }
+.cardHeaderRight { display: flex; gap: 6px; flex-shrink: 0; }
+.cardHeaderRight button { padding: 4px 10px; font-size: 12px; background: var(--color-bg); border: 1px solid var(--color-border); }
+.cardBody { padding: 16px 20px; }
+.contentText { font-size: 13px; white-space: pre-wrap; line-height: 1.6; color: var(--color-text); }
+.registryLink { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-primary); margin-top: 10px; }
+.btnPrimary { background: var(--color-primary); color: #fff; font-weight: 600; }
+.btnPrimary:hover { background: var(--color-primary-dark, #5b21b6); }
+.btnDanger { background: var(--color-danger-light) !important; color: var(--color-danger) !important; border-color: transparent !important; }
+.btnSuccess { background: var(--color-success-light) !important; color: var(--color-success) !important; border-color: transparent !important; }
+.empty { text-align: center; color: var(--color-text-muted); padding: 48px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--color-border); padding-bottom: 2px; }
+.tab { padding: 6px 14px; font-size: 13px; border: none; background: none; cursor: pointer; border-radius: var(--radius) var(--radius) 0 0; color: var(--color-text-muted); }
+.tab:hover { background: var(--color-bg); color: var(--color-text); }
+.tabActive { background: var(--color-primary); color: #fff !important; font-weight: 600; }
+.pdfWrap { padding: 0 20px 20px; }
+.pdfFrame { width: 100%; height: 600px; border: 1px solid var(--color-border); border-radius: 4px; }

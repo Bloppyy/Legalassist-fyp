@@ -1,0 +1,15 @@
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.header h2 { font-size: 20px; font-weight: 700; }
+.headerActions { display: flex; gap: 10px; align-items: center; }
+.filters { display: flex; gap: 12px; margin-bottom: 20px; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 14px 18px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; transition: background 0.1s; }
+.itemUnread { border-left: 3px solid var(--color-primary); background: #f5f3ff; }
+.itemContent { flex: 1; min-width: 0; }
+.title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.message { font-size: 13px; color: var(--color-text-muted); }
+.meta { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+.markBtn { padding: 4px 10px; font-size: 12px; background: var(--color-bg); border: 1px solid var(--color-border); flex-shrink: 0; white-space: nowrap; }
+.btnPrimary { background: var(--color-primary); color: #fff; font-weight: 600; border: none; padding: 7px 14px; border-radius: var(--radius); font-size: 13px; }
+.empty { text-align: center; color: var(--color-text-muted); padding: 48px; }
+.unreadDot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); margin-right: 6px; flex-shrink: 0; margin-top: 5px; }

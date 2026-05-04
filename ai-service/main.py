@@ -1,0 +1,33 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from routers import compliance, entities, templates, court_directions
+
+app = FastAPI(
+    title="LegalAssist AI Service",
+    description=(
+        "NLP microservice for Malaysian civil litigation document compliance checking, "
+        "entity extraction, and template matching. "
+        "Consumed internally by the Node.js backend — not called directly from the frontend."
+    ),
+    version="1.0.0",
+)
+
+# CORS — only the Node.js backend needs to call this service
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5000"],  # Node.js backend origin
+    allow_methods=["POST", "GET"],
+    allow_headers=["Content-Type"],
+)
+
+# Routers
+app.include_router(compliance.router)
+app.include_router(entities.router)
+app.include_router(templates.router)
+app.include_router(court_directions.router)
+
+
+@app.get("/", tags=["Health"])
+def health_check():
+    return {"status": "ok", "service": "LegalAssist AI Service"}

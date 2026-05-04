@@ -1,0 +1,35 @@
+# Node
+node_modules/
+legal-system-backend/.env
+legal-system-backend/.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+ai-service/.env
+
+# React build
+web/node_modules/
+web/build/
+web/.env
+web/.env.*
+web/.env.local
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db

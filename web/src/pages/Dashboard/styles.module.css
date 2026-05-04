@@ -1,0 +1,61 @@
+.greeting { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.role { color: var(--color-text-muted); margin-bottom: 28px; font-size: 14px; }
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.statCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.15s;
+}
+.statCard:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+.statNum  { font-size: 32px; font-weight: 700; color: var(--color-primary); }
+.statLabel { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.panelHeader h3 { font-size: 15px; font-weight: 600; }
+.panelHeader a  { font-size: 13px; color: var(--color-primary); }
+
+.empty { padding: 20px; color: var(--color-text-muted); font-size: 13px; }
+
+.badge {
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.deadlineList { list-style: none; }
+.deadlineItem {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.deadlineItem:last-child { border-bottom: none; }
+.deadlineTitle { font-weight: 500; margin-bottom: 2px; }
+.deadlineMeta  { font-size: 12px; color: var(--color-text-muted); }

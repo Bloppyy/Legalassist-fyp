@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check src/index.js)",
+      "Bash(node --check src/controllers/casesController.js)",
+      "Bash(node --check src/controllers/documentsController.js)",
+      "Bash(node --check src/controllers/templatesController.js)",
+      "Bash(node --check src/controllers/templateCategoriesController.js)",
+      "Bash(node --check src/controllers/notificationsController.js)",
+      "Bash(node --check src/services/notificationService.js)",
+      "Bash(node --check src/routes/documents.js)",
+      "Bash(node --check src/middleware/auth.js)",
+      "Bash(timeout 5 node src/index.js)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
