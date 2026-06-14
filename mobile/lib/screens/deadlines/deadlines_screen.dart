@@ -225,7 +225,13 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> with SingleTickerProv
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(d['court_name'] ?? '—'),
+            if (d['category'] != null)
+              Text(
+                (d['category'] as String).replaceAll('_', ' '),
+                style: TextStyle(fontSize: 12, color: Colors.blue[700], fontWeight: FontWeight.w500),
+              ),
+            if (d['court_name'] != null && (d['court_name'] as String).isNotEmpty)
+              Text(d['court_name'], style: const TextStyle(fontSize: 12)),
             Text(
               date,
               style: TextStyle(

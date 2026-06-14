@@ -31,7 +31,10 @@ router.post(
   '/',
   authorize(...LEVEL_1_AND_ASSOCIATE),
   upload.single('file'),
-  [body('title').notEmpty().withMessage('title is required')],
+  [
+    body('title').notEmpty().withMessage('title is required'),
+    body('case_id').optional({ nullable: true }).isUUID().withMessage('case_id must be a UUID'),
+  ],
   validate,
   documentsController.create
 );
@@ -77,6 +80,7 @@ router.patch('/:id/file', authorize('associate'), documentsController.markFiled)
 router.patch('/:id/serve', authorize('admin'), documentsController.markServed);
 
 router.post('/:id/check-compliance', documentsController.checkCompliance);
+router.post('/:id/check-similarity', documentsController.checkSimilarity);
 router.get('/:id/entities', documentsController.getEntities);
 
 module.exports = router;

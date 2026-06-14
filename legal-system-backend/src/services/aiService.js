@@ -51,10 +51,89 @@ const matchTemplate = async (content) => {
 /**
  * Parse a Malaysian court direction (arahan) document.
  * @param {string} text - Extracted text from the arahan file
- * @returns {{ next_court_date, required_actions, parties, court_name, confidence }}
+ * @returns {{ next_court_date, required_actions, parties, court_name, confidence, parser_used }}
  */
 const parseDirection = async (text) => {
   return post('/parse-direction', { text });
 };
 
-module.exports = { checkCompliance, extractEntities, matchTemplate, parseDirection };
+/**
+ * Classify a document's type using sentence-transformer similarity.
+ * @param {string} content - Raw document text
+ * @returns {{ predicted_type, label, confidence, auto_selected, all_scores }}
+ */
+const classifyDocument = async (content) => {
+  return post('/classify', { content });
+};
+
+/**
+ * Check compliance using sentence-transformer similarity scoring (per-section scores).
+ * @param {string} content - Raw document text
+ * @param {string} documentType - e.g. 'affidavit'
+ * @returns {{ document_type, overall_score, compliant, sections, threshold }}
+ */
+const similarityCheckCompliance = async (content, documentType) => {
+  return post('/compliance/check-similarity', { content, document_type: documentType });
+};
+
+/**
+ * Evaluate both parsers on a single document against ground truth.
+ * @param {string} text - Arahan document text
+ * @param {object} groundTruth - { next_court_date, court_name, parties, required_actions }
+ * @returns {{ rule_based, ml, ml_available }}
+ */
+const evaluateParser = async (text, groundTruth) => {
+  return post('/evaluate-parser', { text, ground_truth: groundTruth });
+};
+
+/**
+ * Trigger a batch evaluation run across all annotated arahan files.
+ * @returns {AggregateEvaluationResponse}
+ */
+const runBatchEvaluation = async () => {
+  const response = await fetch(`${AI_SERVICE_URL}/evaluate-parser/run-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`AI service error (${response.status}): ${text}`);
+  }
+  return response.json();
+};
+
+/**
+ * Retrieve the last stored batch evaluation results.
+ * @returns {AggregateEvaluationResponse}
+ */
+const getAggregateEvaluation = async () => {
+  const response = await fetch(`${AI_SERVICE_URL}/evaluate-parser/aggregate`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`AI service error (${response.status}): ${text}`);
+  }
+  return response.json();
+};
+
+/**
+ * Match parsed arahan required_actions against pending case checklist item titles.
+ * @param {string[]} required_actions
+ * @param {{ id: string, title: string }[]} checklist_items
+ * @returns {{ matches: Array<{ action, best_match_id, best_match_title, score }> }}
+ */
+const matchChecklistItems = async (required_actions, checklist_items) => {
+  return post('/checklist/match', { required_actions, checklist_items });
+};
+
+module.exports = {
+  checkCompliance,
+  extractEntities,
+  matchTemplate,
+  parseDirection,
+  classifyDocument,
+  similarityCheckCompliance,
+  evaluateParser,
+  runBatchEvaluation,
+  getAggregateEvaluation,
+  matchChecklistItems,
+};

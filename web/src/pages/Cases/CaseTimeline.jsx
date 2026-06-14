@@ -3,16 +3,9 @@ import {
   getCaseStages, createCaseStage, updateCaseStage, deleteCaseStage,
   toggleCaseStageComplete, parseDirection, downloadStageFile,
 } from '../../api/caseStages';
+import { matchDirection } from '../../api/checklist';
+import { STAGE_COLORS } from '../../constants/colors';
 import styles from './detail.module.css';
-
-const STAGE_COLORS = {
-  court_appearance: '#1c64f2',
-  court_direction: '#d97706',
-  meeting:          '#057a55',
-  filing_deadline:  '#e02424',
-  year_end_review:  '#7e3af2',
-  other:            '#6b7280',
-};
 
 const STAGE_LABELS = {
   court_appearance: 'Court Appearance',
@@ -34,30 +27,40 @@ const STAGE_ICONS = {
 
 const STAGE_TYPES = Object.keys(STAGE_LABELS);
 const SOURCE_OPTIONS = [
-  { value: '', label: '— none —' },
+  { value: '',         label: '— none —' },
   { value: 'website',  label: 'Website' },
   { value: 'physical', label: 'Physical' },
   { value: 'both',     label: 'Both' },
 ];
 const SOURCE_LABELS = { website: 'Website', physical: 'Physical', both: 'Both' };
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 const EMPTY_FORM = {
   stage_type: 'court_appearance',
   title: '',
-  stage_date: '',
+  stage_date: today(),
+  court_name: '',
   next_court_date: '',
   directions: '',
   direction_source: '',
 };
 
+function suggestStageType(title) {
+  const t = title.toLowerCase();
+  if (/hearing|appear|mention|mahkamah|tarikh court/.test(t)) return 'court_appearance';
+  if (/direction|arahan|order|perintah/.test(t))              return 'court_direction';
+  if (/meeting|consult|discuss|mesyuarat/.test(t))            return 'meeting';
+  if (/file|filing|submit|deadline|serve|kemukakan/.test(t))  return 'filing_deadline';
+  if (/review|annual|year|tahunan/.test(t))                   return 'year_end_review';
+  return null;
+}
+
 function findCurrentStageId(stages) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const upcoming = stages.filter(s => !s.is_completed && new Date(s.stage_date) >= today);
+  const now = today();
+  const upcoming = stages.filter(s => !s.is_completed && s.stage_date >= now);
   if (!upcoming.length) return null;
-  return upcoming.reduce((min, s) =>
-    new Date(s.stage_date) < new Date(min.stage_date) ? s : min
-  ).id;
+  return upcoming.reduce((min, s) => s.stage_date < min.stage_date ? s : min).id;
 }
 
 function nodeState(stage, currentId) {
@@ -66,7 +69,7 @@ function nodeState(stage, currentId) {
   return 'upcoming';
 }
 
-export default function CaseTimeline({ caseId, canWrite }) {
+export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,7 +79,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [formMeta, setFormMeta] = useState({ aiParsed: false, fileUrl: null, fileName: null });
+  const [aiParsed, setAiParsed] = useState(false);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -97,10 +100,12 @@ export default function CaseTimeline({ caseId, canWrite }) {
 
   useEffect(() => { load(); }, [caseId]);
 
+  const closeForm = () => { setShowForm(false); setFormError(''); };
+
   const openAddManual = () => {
     setEditingId(null);
-    setForm(EMPTY_FORM);
-    setFormMeta({ aiParsed: false, fileUrl: null, fileName: null });
+    setForm({ ...EMPTY_FORM, stage_date: today() });
+    setAiParsed(false);
     setFormError('');
     setShowForm(true);
   };
@@ -109,16 +114,22 @@ export default function CaseTimeline({ caseId, canWrite }) {
     setSelectedStage(null);
     setEditingId(stage.id);
     setForm({
-      stage_type: stage.stage_type,
-      title: stage.title,
-      stage_date: stage.stage_date ?? '',
-      next_court_date: stage.next_court_date ?? '',
-      directions: stage.directions ?? '',
+      stage_type:       stage.stage_type,
+      title:            stage.title,
+      stage_date:       stage.stage_date ?? today(),
+      court_name:       stage.court_name ?? '',
+      next_court_date:  stage.next_court_date ?? '',
+      directions:       stage.directions ?? '',
       direction_source: stage.direction_source ?? '',
     });
-    setFormMeta({ aiParsed: stage.ai_parsed ?? false, fileUrl: stage.file_url ?? null, fileName: stage.file_name ?? null });
+    setAiParsed(stage.ai_parsed ?? false);
     setFormError('');
     setShowForm(true);
+  };
+
+  const handleTitleChange = (value) => {
+    const suggested = suggestStageType(value);
+    setForm(f => ({ ...f, title: value, stage_type: suggested ?? f.stage_type }));
   };
 
   const handleSave = async (e) => {
@@ -127,16 +138,29 @@ export default function CaseTimeline({ caseId, canWrite }) {
     try {
       const payload = {
         ...form,
-        case_id: caseId,
-        next_court_date: form.next_court_date || null,
+        case_id:          caseId,
+        court_name:       form.court_name || null,
+        next_court_date:  form.next_court_date || null,
         direction_source: form.direction_source || null,
-        ai_parsed: formMeta.aiParsed,
-        file_url: formMeta.fileUrl || null,
-        file_name: formMeta.fileName || null,
+        ai_parsed:        aiParsed,
       };
-      if (editingId) await updateCaseStage(editingId, payload);
-      else await createCaseStage(payload);
-      setShowForm(false);
+      if (editingId) {
+        await updateCaseStage(editingId, payload);
+      } else {
+        const res = await createCaseStage(payload);
+        if (form.stage_type === 'court_direction' && form.directions && onDirectionSaved) {
+          const stageId = res.data.data?.id;
+          const actions = form.directions.split('\n').map(s => s.trim()).filter(Boolean);
+          if (stageId && actions.length > 0) {
+            try {
+              const matchRes = await matchDirection(caseId, actions);
+              const matchData = matchRes.data.data;
+              if (matchData?.has_suggestions) onDirectionSaved(matchData.matches, stageId);
+            } catch { /* AI service unavailable — silently ignore */ }
+          }
+        }
+      }
+      closeForm();
       load();
     } catch (err) {
       setFormError(err.response?.data?.message ?? 'Failed to save');
@@ -144,14 +168,12 @@ export default function CaseTimeline({ caseId, canWrite }) {
   };
 
   const handleToggleComplete = async (id) => {
-    try { await toggleCaseStageComplete(id); setSelectedStage(null); load(); }
-    catch {}
+    try { await toggleCaseStageComplete(id); setSelectedStage(null); load(); } catch {}
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this stage?')) return;
-    try { await deleteCaseStage(id); setSelectedStage(null); load(); }
-    catch {}
+    try { await deleteCaseStage(id); setSelectedStage(null); load(); } catch {}
   };
 
   const handleDownload = async (id) => {
@@ -170,19 +192,19 @@ export default function CaseTimeline({ caseId, canWrite }) {
       fd.append('file', arahanFile);
       const res = await parseDirection(caseId, fd);
       const parsed = res.data.data;
-
       setForm({
-        stage_type: 'court_direction',
-        title: parsed.court_name || 'Court Direction',
-        stage_date: new Date().toISOString().slice(0, 10),
-        next_court_date: parsed.next_court_date || '',
+        stage_type:       'court_direction',
+        title:            parsed.court_name || 'Court Direction',
+        stage_date:       today(),
+        court_name:       parsed.court_name || '',
+        next_court_date:  parsed.next_court_date || '',
         directions: [
           ...parsed.required_actions,
           parsed.parties.length > 0 ? `Parties: ${parsed.parties.join(', ')}` : '',
         ].filter(Boolean).join('\n'),
         direction_source: 'physical',
       });
-      setFormMeta({ aiParsed: true, fileUrl: parsed.file_url ?? null, fileName: parsed.file_name ?? null });
+      setAiParsed(true);
       setEditingId(null);
       setFormError('');
       setShowUpload(false);
@@ -199,7 +221,6 @@ export default function CaseTimeline({ caseId, canWrite }) {
 
   return (
     <>
-      {/* Section header */}
       <div className={styles.sectionHeader}>
         <h3>Case Timeline ({stages.length})</h3>
         {canWrite && (
@@ -215,56 +236,57 @@ export default function CaseTimeline({ caseId, canWrite }) {
         )}
       </div>
 
-      {/* Add / Edit stage form */}
+      {/* Add / Edit form */}
       {showForm && (
         <div style={{ padding: '0 20px 4px' }}>
           <div className={styles.formCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 {editingId ? 'Edit Stage' : 'Add Stage'}
-                {formMeta.aiParsed && <span className={styles.aiBadge}>AI Pre-filled</span>}
+                {aiParsed && <span className={styles.aiBadge}>AI Pre-filled</span>}
               </h4>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: 'var(--color-text-muted)', padding: '0 4px' }}>×</button>
+              <button onClick={closeForm} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: 'var(--color-text-muted)', padding: '0 4px' }}>×</button>
             </div>
             {formError && <div className={styles.error} style={{ marginBottom: 12 }}>{formError}</div>}
             <form onSubmit={handleSave} className={styles.form}>
+              <div className={styles.field}>
+                <label>Title *</label>
+                <input value={form.title} onChange={e => handleTitleChange(e.target.value)} required placeholder="e.g. Case Management Conference" />
+              </div>
               <div className={styles.row}>
                 <div className={styles.field}>
                   <label>Stage Type *</label>
-                  <select value={form.stage_type} onChange={(e) => setForm({ ...form, stage_type: e.target.value })} required>
+                  <select value={form.stage_type} onChange={e => setForm({ ...form, stage_type: e.target.value })} required>
                     {STAGE_TYPES.map(t => <option key={t} value={t}>{STAGE_LABELS[t]}</option>)}
                   </select>
                 </div>
                 <div className={styles.field}>
                   <label>Stage Date *</label>
-                  <input type="date" value={form.stage_date} onChange={(e) => setForm({ ...form, stage_date: e.target.value })} required />
+                  <input type="date" value={form.stage_date} onChange={e => setForm({ ...form, stage_date: e.target.value })} required />
                 </div>
-              </div>
-              <div className={styles.field}>
-                <label>Title *</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="e.g. Case Management Conference" />
               </div>
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label>Next Court Date</label>
-                  <input type="date" value={form.next_court_date} onChange={(e) => setForm({ ...form, next_court_date: e.target.value })} />
+                  <label>Court Name</label>
+                  <input value={form.court_name} onChange={e => setForm({ ...form, court_name: e.target.value })} placeholder="e.g. Mahkamah Tinggi Melaka" />
                 </div>
                 <div className={styles.field}>
-                  <label>Direction Source</label>
-                  <select value={form.direction_source} onChange={(e) => setForm({ ...form, direction_source: e.target.value })}>
-                    {SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <label>Next Court Date</label>
+                  <input type="date" value={form.next_court_date} onChange={e => setForm({ ...form, next_court_date: e.target.value })} />
                 </div>
               </div>
               <div className={styles.field}>
                 <label>Directions / Notes</label>
-                <textarea rows={3} value={form.directions} onChange={(e) => setForm({ ...form, directions: e.target.value })} />
+                <textarea rows={3} value={form.directions} onChange={e => setForm({ ...form, directions: e.target.value })} placeholder="Type court directions, required actions, or notes here" />
               </div>
-              {formMeta.fileName && (
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>📎 {formMeta.fileName}</div>
-              )}
+              <div className={styles.field}>
+                <label>Direction Source</label>
+                <select value={form.direction_source} onChange={e => setForm({ ...form, direction_source: e.target.value })}>
+                  {SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
               <div className={styles.formActions}>
-                <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" onClick={closeForm}>Cancel</button>
                 <button type="submit" className={styles.btnPrimary} disabled={formSaving}>
                   {formSaving ? 'Saving…' : editingId ? 'Update Stage' : 'Save Stage'}
                 </button>
@@ -280,7 +302,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
           <div className={styles.modal}>
             <h3>Upload Arahan</h3>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: -8 }}>
-              Upload a court direction document (PDF or Word). AI will extract the key fields automatically for you to review before saving.
+              Upload a court direction document (PDF or Word). AI will extract the key fields and pre-fill the stage form.
             </p>
             {parseError && <div className={styles.error}>{parseError}</div>}
             <form onSubmit={handleParseArahan} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -289,7 +311,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
                 <input
                   type="file"
                   accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-                  onChange={(e) => setArahanFile(e.target.files[0] ?? null)}
+                  onChange={e => setArahanFile(e.target.files[0] ?? null)}
                   required
                 />
               </div>
@@ -304,7 +326,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
         </div>
       )}
 
-      {/* Timeline */}
+      {/* Vertical timeline */}
       {stages.length === 0 ? (
         <div className={styles.empty}>No stages recorded yet. Add a stage manually or upload an arahan to get started.</div>
       ) : (
@@ -337,6 +359,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
                   </div>
                   <div className={styles.nodeMeta}>
                     <span>{STAGE_LABELS[stage.stage_type]}</span>
+                    {stage.court_name && <><span className={styles.nodeDot}>·</span><span>{stage.court_name}</span></>}
                     <span className={styles.nodeDot}>·</span>
                     <span>
                       {new Date(stage.stage_date + 'T00:00:00').toLocaleDateString('en-MY', {
@@ -373,9 +396,7 @@ export default function CaseTimeline({ caseId, canWrite }) {
               <button
                 onClick={() => setSelectedStage(null)}
                 style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
-              >
-                ×
-              </button>
+              >×</button>
             </div>
 
             <h3 className={styles.panelTitle}>{selectedStage.title}</h3>
@@ -385,6 +406,12 @@ export default function CaseTimeline({ caseId, canWrite }) {
                 <span className={styles.panelMetaLabel}>Stage Date</span>
                 <span>{new Date(selectedStage.stage_date + 'T00:00:00').toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
               </div>
+              {selectedStage.court_name && (
+                <div className={styles.panelMetaRow}>
+                  <span className={styles.panelMetaLabel}>Court</span>
+                  <span>{selectedStage.court_name}</span>
+                </div>
+              )}
               {selectedStage.next_court_date && (
                 <div className={styles.panelMetaRow}>
                   <span className={styles.panelMetaLabel}>Next Court Date</span>

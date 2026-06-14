@@ -1,6 +1,8 @@
 import api from './axios';
 
 export const getCaseStages          = (caseId) => api.get('/case-stages', { params: { case_id: caseId } });
+export const getUpcomingCaseStages  = (days) => api.get('/case-stages', { params: { upcoming_days: days } });
+export const getCaseStageStats      = () => api.get('/case-stages/stats');
 export const createCaseStage        = (data) => api.post('/case-stages', data);
 export const updateCaseStage        = (id, data) => api.patch(`/case-stages/${id}`, data);
 export const deleteCaseStage        = (id) => api.delete(`/case-stages/${id}`);

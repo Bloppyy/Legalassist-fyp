@@ -6,13 +6,10 @@ import {
   checkCompliance,
 } from '../../api/documents';
 import { getTemplates } from '../../api/templates';
+import { getCases } from '../../api/cases';
 import { useAuth } from '../../context/AuthContext';
+import { STATUS_COLORS } from '../../constants/colors';
 import styles from './styles.module.css';
-
-const STATUS_COLORS = {
-  draft: '#6b7280', pending_associate: '#c27803', pending_partner: '#7e3af2',
-  approved: '#057a55', filed: '#1c64f2', served: '#0694a2', rejected: '#e02424',
-};
 
 const LEVEL_1 = ['intern', 'junior_associate', 'chambering'];
 
@@ -23,10 +20,15 @@ export default function Documents() {
 
   const [docs, setDocs] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [cases, setCases] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [caseFilter, setCaseFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [formTags, setFormTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', template_id: '' });
+  const [form, setForm] = useState({ title: '', template_id: '', case_id: '' });
   const [fileInput, setFileInput] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -40,16 +42,18 @@ export default function Documents() {
   const load = async () => {
     setLoading(true);
     try {
-      const [docsRes, tplRes] = await Promise.all([
-        getDocuments({ status: statusFilter || undefined }),
+      const [docsRes, tplRes, casesRes] = await Promise.all([
+        getDocuments({ status: statusFilter || undefined, case_id: caseFilter || undefined, tag: tagFilter || undefined }),
         getTemplates(),
+        getCases(),
       ]);
       setDocs(docsRes.data.data ?? []);
       setTemplates(tplRes.data.data ?? []);
+      setCases(casesRes.data.data ?? []);
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => { load(); }, [statusFilter, caseFilter, tagFilter]);
 
   const handleCreate = async (e) => {
     e.preventDefault(); setSaving(true); setError('');
@@ -57,10 +61,14 @@ export default function Documents() {
       const fd = new FormData();
       fd.append('title', form.title);
       if (form.template_id) fd.append('template_id', form.template_id);
+      if (form.case_id) fd.append('case_id', form.case_id);
       if (fileInput) fd.append('file', fileInput);
+      formTags.forEach(t => fd.append('tags', t));
       await createDocument(fd);
       setShowForm(false);
-      setForm({ title: '', template_id: '' });
+      setForm({ title: '', template_id: '', case_id: '' });
+      setFormTags([]);
+      setTagInput('');
       setFileInput(null);
       if (fileRef.current) fileRef.current.value = '';
       load();
@@ -120,13 +128,26 @@ export default function Documents() {
         {canCreate && <button className={styles.btnPrimary} onClick={() => { setShowForm(true); setError(''); }}>+ New Document</button>}
       </div>
 
-      <div className={styles.filters}>
+      <div className={styles.filters} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
           {['draft','pending_associate','pending_partner','approved','filed','served','rejected'].map(s => (
             <option key={s} value={s}>{s.replace(/_/g,' ')}</option>
           ))}
         </select>
+        <select value={caseFilter} onChange={(e) => setCaseFilter(e.target.value)} style={{ minWidth: 200 }}>
+          <option value="">All cases</option>
+          {cases.map(c => <option key={c.id} value={c.id}>{c.case_number} — {c.client_name}</option>)}
+        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input
+            placeholder="Filter by tag…"
+            value={tagFilter}
+            onChange={e => setTagFilter(e.target.value)}
+            style={{ width: 150, fontSize: 13 }}
+          />
+          {tagFilter && <button onClick={() => setTagFilter('')} style={{ fontSize: 12, padding: '4px 8px' }}>✕</button>}
+        </div>
       </div>
 
       {actionError && <div className={styles.error}>{actionError}</div>}
@@ -163,6 +184,38 @@ export default function Documents() {
               </select>
             </div>
             <div className={styles.field}>
+              <label>Linked Case</label>
+              <select value={form.case_id} onChange={(e) => setForm({ ...form, case_id: e.target.value })}>
+                <option value="">None</option>
+                {cases.map(c => <option key={c.id} value={c.id}>{c.case_number} — {c.client_name}</option>)}
+              </select>
+            </div>
+            <div className={styles.field}>
+              <label>Tags</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                {formTags.map(t => (
+                  <span key={t} className={styles.tagChip}>
+                    {t}
+                    <button onClick={() => setFormTags(formTags.filter(x => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: 4, padding: 0, fontSize: 11 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+              <input
+                placeholder="Type tag, press Enter…"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                    e.preventDefault();
+                    const t = tagInput.trim().replace(/,+$/, '');
+                    if (t && !formTags.includes(t)) setFormTags([...formTags, t]);
+                    setTagInput('');
+                  }
+                }}
+                style={{ fontSize: 13 }}
+              />
+            </div>
+            <div className={styles.field}>
               <label>Word File (.docx)</label>
               <input
                 ref={fileRef}
@@ -172,7 +225,7 @@ export default function Documents() {
               />
             </div>
             <div className={styles.actions}>
-              <button type="button" onClick={() => { setShowForm(false); setFileInput(null); if (fileRef.current) fileRef.current.value = ''; }}>Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setFileInput(null); setForm({ title: '', template_id: '', case_id: '' }); if (fileRef.current) fileRef.current.value = ''; }}>Cancel</button>
               <button type="submit" className={styles.btnPrimary} disabled={saving}>{saving ? 'Saving…' : 'Create Draft'}</button>
             </div>
           </form>
@@ -182,12 +235,26 @@ export default function Documents() {
       {loading ? <p>Loading…</p> : (
         <div className={styles.tableWrap}>
           <table>
-            <thead><tr><th>Title</th><th>Status</th><th>File</th><th>Created</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Title</th><th>Case</th><th>Status</th><th>File</th><th>Created</th><th>Actions</th></tr></thead>
             <tbody>
-              {docs.length === 0 && <tr><td colSpan={5} className={styles.empty}>No documents found.</td></tr>}
+              {docs.length === 0 && <tr><td colSpan={6} className={styles.empty}>No documents found.</td></tr>}
               {docs.map((d) => (
                 <tr key={d.id}>
-                  <td><Link to={`/documents/${d.id}`}>{d.title}</Link></td>
+                  <td>
+                    <Link to={`/documents/${d.id}`}>{d.title}</Link>
+                    {d.tags?.length > 0 && (
+                      <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {d.tags.map(t => (
+                          <span key={t} className={styles.tagChip} style={{ cursor: 'pointer' }} onClick={() => setTagFilter(t)}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 12 }}>
+                    {d.case_file
+                      ? <Link to={`/cases/${d.case_file.id}`}>{d.case_file.case_number}</Link>
+                      : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                  </td>
                   <td>
                     <span className={styles.badge} style={{ background: (STATUS_COLORS[d.status] ?? '#6b7280') + '20', color: STATUS_COLORS[d.status] ?? '#6b7280' }}>
                       {d.status.replace(/_/g,' ')}

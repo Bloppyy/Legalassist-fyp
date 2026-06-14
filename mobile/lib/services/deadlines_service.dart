@@ -5,11 +5,11 @@ class DeadlinesService {
     final params = <String, String>{};
     if (upcomingOnly) params['upcoming'] = 'true';
     if (caseId != null && caseId.isNotEmpty) params['case_id'] = caseId;
-    final data = await ApiService.get('/deadlines', params: params);
+    final data = await ApiService.get('/firm-deadlines', params: params);
     return List<dynamic>.from(data ?? []);
   }
 
   static Future<void> toggleComplete(String id) async {
-    await ApiService.patch('/deadlines/$id/toggle-complete');
+    await ApiService.patch('/firm-deadlines/$id/toggle-complete');
   }
 }

@@ -16,6 +16,11 @@ const contactsRouter = require('./routes/contacts');
 const notificationsRouter = require('./routes/notifications');
 const courtGuidelinesRouter = require('./routes/courtGuidelines');
 const caseStagesRouter = require('./routes/caseStages');
+const searchRouter = require('./routes/search');
+const evaluationRouter = require('./routes/evaluation');
+const checklistTemplatesRouter = require('./routes/checklistTemplates');
+const caseChecklistRouter = require('./routes/caseChecklist');
+const deadlineNotifier = require('./jobs/deadlineNotifier');
 
 const app = express();
 
@@ -36,11 +41,15 @@ app.use('/api/cases', casesRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/template-categories', templateCategoriesRouter);
-app.use('/api/deadlines', deadlinesRouter);
+app.use('/api/firm-deadlines', deadlinesRouter);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/court-guidelines', courtGuidelinesRouter);
 app.use('/api/case-stages', caseStagesRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/evaluation', evaluationRouter);
+app.use('/api/checklist-templates', checklistTemplatesRouter);
+app.use('/api/cases/:caseId/checklist', caseChecklistRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -54,4 +63,5 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  deadlineNotifier.register();
 });

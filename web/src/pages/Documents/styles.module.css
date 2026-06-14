@@ -27,3 +27,6 @@
 .issueError { background: var(--color-danger-light); color: var(--color-danger); }
 .issueWarn  { background: var(--color-warning-light); color: var(--color-warning); }
 .confidence { font-size: 11px; opacity: 0.7; flex-shrink: 0; }
+
+/* Tags */
+.tagChip { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: var(--color-primary-light, #eff6ff); color: var(--color-primary); border: 1px solid #bfdbfe; }

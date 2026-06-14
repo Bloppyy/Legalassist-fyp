@@ -24,6 +24,9 @@ const STAGE_TYPES = ['court_appearance', 'court_direction', 'meeting', 'filing_d
 
 router.use(authenticate);
 
+// GET /api/case-stages/stats — admin only (must be before /:id routes)
+router.get('/stats', authorize('admin'), ctrl.getStats);
+
 // GET /api/case-stages?case_id=:id — all staff can view
 router.get('/', authorize(...STAFF), ctrl.getAll);
 
@@ -36,8 +39,10 @@ router.post(
     body('stage_type').isIn(STAGE_TYPES).withMessage('Invalid stage_type'),
     body('title').notEmpty().withMessage('title is required'),
     body('stage_date').isDate().withMessage('stage_date must be YYYY-MM-DD'),
+    body('court_name').optional({ nullable: true }).isString(),
     body('next_court_date').optional({ nullable: true }).isDate().withMessage('next_court_date must be YYYY-MM-DD'),
     body('direction_source').optional({ nullable: true }).isIn(['website', 'physical', 'both']),
+    body('confidence').optional({ nullable: true }).isFloat({ min: 0, max: 1 }),
   ],
   validate,
   ctrl.create
@@ -51,6 +56,7 @@ router.patch(
     body('stage_type').optional().isIn(STAGE_TYPES),
     body('title').optional().notEmpty(),
     body('stage_date').optional().isDate(),
+    body('court_name').optional({ nullable: true }).isString(),
     body('next_court_date').optional({ nullable: true }).isDate(),
     body('direction_source').optional({ nullable: true }).isIn(['website', 'physical', 'both']),
   ],

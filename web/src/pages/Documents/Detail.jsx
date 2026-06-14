@@ -3,15 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   getDocument, updateDocument, submitDocument, escalateDocument,
   approveDocument, rejectDocument, fileDocument, serveDocument,
-  downloadDocument, reuploadDocument, checkCompliance, extractEntities,
+  downloadDocument, reuploadDocument, checkCompliance, checkSimilarity, extractEntities,
 } from '../../api/documents';
 import { useAuth } from '../../context/AuthContext';
+import { STATUS_COLORS } from '../../constants/colors';
 import styles from './detail.module.css';
-
-const STATUS_COLORS = {
-  draft: '#6b7280', pending_associate: '#c27803', pending_partner: '#7e3af2',
-  approved: '#057a55', filed: '#1c64f2', served: '#0694a2', rejected: '#e02424',
-};
 
 const LEVEL_1 = ['intern', 'junior_associate', 'chambering'];
 
@@ -30,6 +26,8 @@ export default function DocumentDetail() {
   const [actionError, setActionError] = useState('');
   const [checkingCompliance, setCheckingCompliance] = useState(false);
   const [liveCompliance, setLiveCompliance] = useState(null);
+  const [checkingSimilarity, setCheckingSimilarity] = useState(false);
+  const [similarityResult, setSimilarityResult] = useState(null);
   const [rejectModal, setRejectModal] = useState(false);
   const [escalateModal, setEscalateModal] = useState(false);
   const [reuploadFile, setReuploadFile] = useState(null);
@@ -144,6 +142,16 @@ export default function DocumentDetail() {
     } finally { setCheckingCompliance(false); }
   };
 
+  const handleCheckSimilarity = async () => {
+    setCheckingSimilarity(true); setSimilarityResult(null); setActionError('');
+    try {
+      const res = await checkSimilarity(id);
+      setSimilarityResult(res.data.data);
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'AI service unavailable');
+    } finally { setCheckingSimilarity(false); }
+  };
+
   if (loading) return <p>Loading…</p>;
   if (!doc) return null;
 
@@ -180,6 +188,9 @@ export default function DocumentDetail() {
           <button onClick={handleCheck} disabled={checkingCompliance}>
             {checkingCompliance ? 'Checking…' : 'Check Compliance'}
           </button>
+          <button onClick={handleCheckSimilarity} disabled={checkingSimilarity}>
+            {checkingSimilarity ? 'Scoring…' : 'Similarity Score'}
+          </button>
           <button onClick={handleExtractEntities} disabled={extractingEntities}>
             {extractingEntities ? 'Extracting…' : 'Extract Entities'}
           </button>
@@ -206,6 +217,14 @@ export default function DocumentDetail() {
         {doc.reviewer?.name && <span><strong>Reviewer:</strong> {doc.reviewer.name}</span>}
         {doc.file_name && <span><strong>File:</strong> {doc.file_name} (v{doc.file_version})</span>}
       </div>
+
+      {doc.tags?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {doc.tags.map(t => (
+            <span key={t} style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 99, background: '#eff6ff', color: 'var(--color-primary)', border: '1px solid #bfdbfe' }}>{t}</span>
+          ))}
+        </div>
+      )}
 
       {actionError && <div className={styles.error}>{actionError}</div>}
 
@@ -291,6 +310,10 @@ export default function DocumentDetail() {
         </div>
       )}
 
+      {similarityResult && (
+        <SimilarityPanel result={similarityResult} onClose={() => setSimilarityResult(null)} styles={styles} />
+      )}
+
       {rejectModal && (
         <CommentModal
           title="Reject Document"
@@ -353,6 +376,53 @@ function EntitiesPanel({ entities, onClose, styles }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SimilarityPanel({ result, onClose, styles }) {
+  const overallPct = Math.round(result.overall_score * 100);
+  const overallColor = overallPct >= 70 ? 'var(--color-success)' : overallPct >= 45 ? '#c27803' : 'var(--color-danger)';
+
+  return (
+    <div className={styles.compliancePanel} style={{ marginBottom: 16 }}>
+      <div className={styles.complianceHeader}>
+        <span>Similarity Score — <span style={{ textTransform: 'capitalize' }}>{result.document_type.replace(/_/g, ' ')}</span></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: result.compliant ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 400 }}>
+            {result.compliant ? '✓ Compliant' : '✗ Below threshold'}
+          </span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
+        </div>
+      </div>
+
+      <div className={styles.simOverall}>
+        <span style={{ fontSize: 36, fontWeight: 700, color: overallColor }}>{overallPct}%</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 10 }}>
+          overall match · threshold {Math.round(result.threshold * 100)}%
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+        {result.sections.map((s) => {
+          const pct = Math.round(s.score * 100);
+          const barColor = s.compliant ? 'var(--color-success)' : 'var(--color-danger)';
+          return (
+            <div key={s.section} className={styles.simRow}>
+              <div className={styles.simLabel}>
+                {s.label}
+                {!s.compliant && <span className={styles.simBadgeFail}>below threshold</span>}
+              </div>
+              <div className={styles.simBarWrap}>
+                <div className={styles.simBarTrack}>
+                  <div className={styles.simBarFill} style={{ width: `${pct}%`, background: barColor }} />
+                </div>
+                <span className={styles.simPct} style={{ color: barColor }}>{pct}%</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

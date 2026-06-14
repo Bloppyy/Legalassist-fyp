@@ -4,7 +4,9 @@ import '../providers/auth_provider.dart';
 import 'cases/cases_screen.dart';
 import 'deadlines/deadlines_screen.dart';
 import 'contacts/contacts_screen.dart';
+import 'documents/documents_screen.dart';
 import 'guidelines/guidelines_screen.dart';
+import 'scanner/scanner_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -19,6 +21,7 @@ class _MainShellState extends State<MainShell> {
   final _screens = const [
     DeadlinesScreen(),
     CasesScreen(),
+    DocumentsScreen(),
     ContactsScreen(),
     GuidelinesScreen(),
   ];
@@ -63,12 +66,24 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       body: _screens[_currentIndex],
+      // Hide scan FAB on the Documents tab — that tab has its own create FAB
+      floatingActionButton: _currentIndex != 2
+          ? FloatingActionButton(
+              heroTag: 'scan_fab',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ScannerScreen()),
+              ),
+              tooltip: 'Scan Document',
+              child: const Icon(Icons.document_scanner),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_today), label: 'Deadlines'),
           NavigationDestination(icon: Icon(Icons.folder_outlined), selectedIcon: Icon(Icons.folder), label: 'Cases'),
+          NavigationDestination(icon: Icon(Icons.description_outlined), selectedIcon: Icon(Icons.description), label: 'Documents'),
           NavigationDestination(icon: Icon(Icons.contacts_outlined), selectedIcon: Icon(Icons.contacts), label: 'Contacts'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Guidelines'),
         ],

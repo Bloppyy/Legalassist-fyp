@@ -3,14 +3,7 @@ const { sendSuccess, createError } = require('../utils/response');
 const { notifyDocumentStatus } = require('../services/notificationService');
 const { uploadFile, getSignedUrl, deleteFile } = require('../services/storageService');
 const aiService = require('../services/aiService');
-const mammoth = require('mammoth');
-
-const extractTextFromDocx = async (buffer) => {
-  try {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value.trim();
-  } catch { return ''; }
-};
+const { extractTextFromDocx } = require('../utils/extractText');
 
 const BUCKET = 'documents';
 
@@ -18,7 +11,8 @@ const WITH_RELATIONS = `
   *,
   creator:users!documents_created_by_fkey(id, name, email, role),
   reviewer:users!documents_reviewed_by_fkey(id, name, email, role),
-  template:templates(id, title)
+  template:templates(id, title),
+  case_file:case_files!documents_case_id_fkey(id, case_number, client_name)
 `;
 
 const fetchDocument = async (id) => {
@@ -37,7 +31,7 @@ const fetchDocument = async (id) => {
 
 const getAll = async (req, res, next) => {
   try {
-    const { status, template_id } = req.query;
+    const { status, template_id, case_id, own, tag } = req.query;
     const { role, id: userId } = req.user;
     const level1 = ['intern', 'junior_associate', 'chambering'];
 
@@ -46,11 +40,13 @@ const getAll = async (req, res, next) => {
       .select(WITH_RELATIONS)
       .order('created_at', { ascending: false });
 
-    if (level1.includes(role)) {
+    if (level1.includes(role) || own === 'true') {
       query = query.eq('created_by', userId);
     }
     if (status) query = query.eq('status', status);
     if (template_id) query = query.eq('template_id', template_id);
+    if (case_id) query = query.eq('case_id', case_id);
+    if (tag) query = query.contains('tags', [tag]);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -83,7 +79,7 @@ const getOne = async (req, res, next) => {
  */
 const create = async (req, res, next) => {
   try {
-    const { title, template_id, content } = req.body;
+    const { title, template_id, content, case_id, tags } = req.body;
     let fileUrl = null;
     let fileName = null;
     let storedContent = content || '';
@@ -99,6 +95,12 @@ const create = async (req, res, next) => {
 
     if (!storedContent) storedContent = '';
 
+    const parsedTags = Array.isArray(tags)
+      ? tags
+      : typeof tags === 'string'
+        ? tags.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+
     const { data, error } = await supabase
       .from('documents')
       .insert({
@@ -108,8 +110,10 @@ const create = async (req, res, next) => {
         file_name: fileName,
         file_version: 1,
         template_id: template_id || null,
+        case_id: case_id || null,
         created_by: req.user.id,
         status: 'draft',
+        tags: parsedTags,
       })
       .select()
       .single();
@@ -131,10 +135,20 @@ const update = async (req, res, next) => {
       return next(createError(400, 'Only draft or rejected documents can be edited'));
     }
 
-    const { title, content } = req.body;
+    const { title, content, tags } = req.body;
+    const updates = { updated_at: new Date().toISOString() };
+    if (title !== undefined) updates.title = title;
+    if (content !== undefined) updates.content = content;
+    if (tags !== undefined) {
+      updates.tags = Array.isArray(tags)
+        ? tags
+        : typeof tags === 'string'
+          ? tags.split(',').map(t => t.trim()).filter(Boolean)
+          : [];
+    }
     const { data, error } = await supabase
       .from('documents')
-      .update({ title, content, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', req.params.id)
       .select()
       .single();
@@ -430,6 +444,33 @@ const checkCompliance = async (req, res, next) => {
   }
 };
 
+const checkSimilarity = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    const level1 = ['intern', 'junior_associate', 'chambering'];
+    if (level1.includes(req.user.role) && doc.created_by !== req.user.id) {
+      return next(createError(403, 'Access denied'));
+    }
+    if (!doc.content || doc.content.startsWith('(Word document')) {
+      return next(createError(400, 'Document text not available for similarity scoring'));
+    }
+
+    let { document_type } = req.body ?? {};
+    if (!document_type) {
+      const matchResult = await aiService.matchTemplate(doc.content);
+      document_type = matchResult.best_match || 'general';
+    }
+
+    const result = await aiService.similarityCheckCompliance(doc.content, document_type);
+    return sendSuccess(res, result);
+  } catch (err) {
+    if (err.message?.includes('AI service error') || err.cause?.code === 'ECONNREFUSED') {
+      return next(createError(503, 'AI service is unavailable'));
+    }
+    next(err);
+  }
+};
+
 const getEntities = async (req, res, next) => {
   try {
     const doc = await fetchDocument(req.params.id);
@@ -452,5 +493,5 @@ const getEntities = async (req, res, next) => {
 
 module.exports = {
   getAll, getOne, create, update, reupload, download, remove,
-  submit, escalate, approve, reject, markFiled, markServed, checkCompliance, getEntities,
+  submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities,
 };

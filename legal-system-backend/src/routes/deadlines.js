@@ -1,50 +1,56 @@
 const { Router } = require('express');
 const { body } = require('express-validator');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize, STAFF } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const deadlinesController = require('../controllers/deadlinesController');
+const ctrl = require('../controllers/deadlinesController');
 
 const router = Router();
 
+const ASSOCIATE_PLUS = ['associate', 'partner', 'admin'];
+const CATEGORIES = [
+  'internal_drafting', 'client_update', 'file_review', 'document_retention',
+  'billing', 'trust_accounting', 'cle', 'insurance', 'other',
+];
+
 router.use(authenticate);
 
-// GET /api/deadlines?case_id=&upcoming=true
-router.get('/', deadlinesController.getAll);
+router.get('/', authorize(...STAFF), ctrl.getAll);
+router.get('/:id', authorize(...STAFF), ctrl.getOne);
 
-// GET /api/deadlines/:id
-router.get('/:id', deadlinesController.getOne);
-
-// POST /api/deadlines
 router.post(
   '/',
+  authorize(...ASSOCIATE_PLUS),
   [
     body('title').notEmpty().withMessage('title is required'),
-    body('court_name').notEmpty().withMessage('court_name is required'),
-    body('deadline_date').isDate().withMessage('deadline_date must be a valid date (YYYY-MM-DD)'),
-    body('case_id').optional().isUUID().withMessage('case_id must be a valid UUID'),
-    body('remarks').optional().isString(),
+    body('deadline_date').isDate().withMessage('deadline_date must be YYYY-MM-DD'),
+    body('court_name').optional({ nullable: true }).isString(),
+    body('case_id').optional({ nullable: true }).isUUID().withMessage('case_id must be a valid UUID'),
+    body('remarks').optional({ nullable: true }).isString(),
+    body('category').optional({ nullable: true }).isIn(CATEGORIES).withMessage('Invalid category'),
+    body('buffer_days').optional({ nullable: true }).isInt({ min: 0 }),
+    body('actual_deadline_date').optional({ nullable: true }).isDate(),
   ],
   validate,
-  deadlinesController.create
+  ctrl.create
 );
 
-// PUT /api/deadlines/:id
 router.put(
   '/:id',
+  authorize(...ASSOCIATE_PLUS),
   [
-    body('title').optional().notEmpty().withMessage('title must not be empty'),
-    body('court_name').optional().notEmpty().withMessage('court_name must not be empty'),
-    body('deadline_date').optional().isDate().withMessage('deadline_date must be a valid date (YYYY-MM-DD)'),
-    body('is_completed').optional().isBoolean().withMessage('is_completed must be a boolean'),
+    body('title').optional().notEmpty(),
+    body('deadline_date').optional().isDate(),
+    body('court_name').optional({ nullable: true }).isString(),
+    body('is_completed').optional().isBoolean(),
+    body('category').optional({ nullable: true }).isIn(CATEGORIES),
+    body('buffer_days').optional({ nullable: true }).isInt({ min: 0 }),
+    body('actual_deadline_date').optional({ nullable: true }).isDate(),
   ],
   validate,
-  deadlinesController.update
+  ctrl.update
 );
 
-// PATCH /api/deadlines/:id/toggle-complete
-router.patch('/:id/toggle-complete', deadlinesController.toggleComplete);
-
-// DELETE /api/deadlines/:id
-router.delete('/:id', deadlinesController.remove);
+router.patch('/:id/toggle-complete', authorize(...STAFF), ctrl.toggleComplete);
+router.delete('/:id', authorize(...ASSOCIATE_PLUS), ctrl.remove);
 
 module.exports = router;
