@@ -491,7 +491,23 @@ const getEntities = async (req, res, next) => {
   }
 };
 
+const classifyDocument = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    if (!doc.content || doc.content.startsWith('(Word document')) {
+      return next(createError(400, 'Document text not available for classification'));
+    }
+    const result = await aiService.classifyDocument(doc.content);
+    return sendSuccess(res, result);
+  } catch (err) {
+    if (err.message?.includes('AI service error') || err.cause?.code === 'ECONNREFUSED') {
+      return next(createError(503, 'AI service is unavailable'));
+    }
+    next(err);
+  }
+};
+
 module.exports = {
   getAll, getOne, create, update, reupload, download, remove,
-  submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities,
+  submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities, classifyDocument,
 };

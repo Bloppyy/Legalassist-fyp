@@ -20,3 +20,4 @@ export const serveDocument     = (id) => api.patch(`/documents/${id}/serve`);
 export const checkCompliance   = (id, data) => api.post(`/documents/${id}/check-compliance`, data);
 export const checkSimilarity   = (id, data) => api.post(`/documents/${id}/check-similarity`, data);
 export const extractEntities   = (id) => api.get(`/documents/${id}/entities`);
+export const classifyDoc       = (id) => api.post(`/documents/${id}/classify`);

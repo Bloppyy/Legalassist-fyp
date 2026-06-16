@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   getDocuments, createDocument, submitDocument, approveDocument,
   rejectDocument, escalateDocument, fileDocument, serveDocument,
-  checkCompliance,
+  checkCompliance, classifyDoc,
 } from '../../api/documents';
 import { getTemplates } from '../../api/templates';
 import { getCases } from '../../api/cases';
@@ -33,6 +33,7 @@ export default function Documents() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [classifyHint, setClassifyHint] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [escalateModal, setEscalateModal] = useState(null);
   const [complianceResult, setComplianceResult] = useState(null);
@@ -64,7 +65,8 @@ export default function Documents() {
       if (form.case_id) fd.append('case_id', form.case_id);
       if (fileInput) fd.append('file', fileInput);
       formTags.forEach(t => fd.append('tags', t));
-      await createDocument(fd);
+      const res = await createDocument(fd);
+      const newId = res.data.data?.id;
       setShowForm(false);
       setForm({ title: '', template_id: '', case_id: '' });
       setFormTags([]);
@@ -72,6 +74,13 @@ export default function Documents() {
       setFileInput(null);
       if (fileRef.current) fileRef.current.value = '';
       load();
+      if (newId) {
+        try {
+          const cr = await classifyDoc(newId);
+          const hint = cr.data.data;
+          if (hint?.confidence > 0) setClassifyHint(hint);
+        } catch { /* AI service unavailable — silently ignore */ }
+      }
     } catch (err) { setError(err.response?.data?.message ?? 'Failed to create'); }
     finally { setSaving(false); }
   };
@@ -151,6 +160,17 @@ export default function Documents() {
       </div>
 
       {actionError && <div className={styles.error}>{actionError}</div>}
+
+      {classifyHint && (
+        <div className={styles.classifyBanner}>
+          <span>
+            AI classified the uploaded document as <strong>{classifyHint.label}</strong>
+            {' '}({Math.round(classifyHint.confidence * 100)}% confidence
+            {classifyHint.auto_selected ? ' — high confidence' : ''})
+          </span>
+          <button onClick={() => setClassifyHint(null)}>✕</button>
+        </div>
+      )}
 
       {complianceResult && (
         <div className={styles.compliancePanel}>

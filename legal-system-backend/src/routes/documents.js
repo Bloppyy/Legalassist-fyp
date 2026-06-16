@@ -82,5 +82,6 @@ router.patch('/:id/serve', authorize('admin'), documentsController.markServed);
 router.post('/:id/check-compliance', documentsController.checkCompliance);
 router.post('/:id/check-similarity', documentsController.checkSimilarity);
 router.get('/:id/entities', documentsController.getEntities);
+router.post('/:id/classify', documentsController.classifyDocument);
 
 module.exports = router;
