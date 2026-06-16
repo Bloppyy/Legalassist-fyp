@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Central HTTP client for all backend API calls.
 /// Automatically attaches the Supabase JWT to every request.
 class ApiService {
-  static const String _baseUrl = 'http://10.0.2.2:5000/api';
+  static const String _prodUrl = 'https://legalassist-backend.onrender.com/api';
+  static const String _devUrl  = 'http://10.0.2.2:5000/api';
+  static const String _baseUrl = kReleaseMode ? _prodUrl : _devUrl;
 
   static Future<Map<String, String>> _headers() async {
     final session = Supabase.instance.client.auth.currentSession;
