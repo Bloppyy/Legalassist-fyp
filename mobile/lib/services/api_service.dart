@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Central HTTP client for all backend API calls.
 /// Automatically attaches the Supabase JWT to every request.
 class ApiService {
-  static const String _prodUrl = 'https://legalassist-backend.onrender.com/api';
+  static const String _prodUrl = 'https://legalassist-backend-vifj.onrender.com/api';
   static const String _devUrl  = 'http://10.0.2.2:5000/api';
   static const String _baseUrl = kReleaseMode ? _prodUrl : _devUrl;
 
