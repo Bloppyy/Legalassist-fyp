@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCases, createCase, updateCase, deleteCase } from '../../api/cases';
+import { getUsers } from '../../api/users';
 import { useAuth } from '../../context/AuthContext';
 import styles from './styles.module.css';
 
@@ -8,6 +9,7 @@ const EMPTY_FORM = {
   case_number: '', file_number: '', year: new Date().getFullYear(),
   client_name: '', description: '',
   storage_room: '', storage_box: '', storage_notes: '',
+  assigned_to: '', partner_id: '',
 };
 
 export default function Cases() {
@@ -16,6 +18,8 @@ export default function Cases() {
   const canDelete = ['partner', 'admin'].includes(profile?.role);
 
   const [cases, setCases] = useState([]);
+  const [associates, setAssociates] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,8 +32,14 @@ export default function Cases() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await getCases({ search: search || undefined, status: statusFilter || undefined });
-      setCases(res.data.data ?? []);
+      const [casesRes, usersRes] = await Promise.all([
+        getCases({ search: search || undefined, status: statusFilter || undefined }),
+        getUsers(),
+      ]);
+      setCases(casesRes.data.data ?? []);
+      const allUsers = usersRes.data.data ?? [];
+      setAssociates(allUsers.filter(u => ['associate', 'junior_associate'].includes(u.role)));
+      setPartners(allUsers.filter(u => u.role === 'partner'));
     } finally { setLoading(false); }
   };
 
@@ -42,6 +52,7 @@ export default function Cases() {
       case_number: c.case_number, file_number: c.file_number ?? '',
       year: c.year, client_name: c.client_name, description: c.description ?? '',
       storage_room: c.storage_room ?? '', storage_box: c.storage_box ?? '', storage_notes: c.storage_notes ?? '',
+      assigned_to: c.assigned_to ?? '', partner_id: c.partner_id ?? '',
     });
     setShowForm(true);
     setError('');
@@ -50,7 +61,12 @@ export default function Cases() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setError('');
     try {
-      const payload = { ...form, file_number: form.file_number || undefined };
+      const payload = {
+        ...form,
+        file_number: form.file_number || undefined,
+        assigned_to: form.assigned_to || null,
+        partner_id: form.partner_id || null,
+      };
       if (editing) await updateCase(editing, payload);
       else await createCase(payload);
       setShowForm(false); load();
@@ -100,6 +116,22 @@ export default function Cases() {
               <div className={styles.field}><label>Storage Box</label><input value={form.storage_box} onChange={(e) => setForm({ ...form, storage_box: e.target.value })} placeholder="e.g. Box 12" /></div>
             </div>
             <div className={styles.field}><label>Storage Notes</label><input value={form.storage_notes} onChange={(e) => setForm({ ...form, storage_notes: e.target.value })} placeholder="Additional storage details" /></div>
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label>Associate</label>
+                <select value={form.assigned_to} onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}>
+                  <option value="">— None —</option>
+                  {associates.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label>Partner</label>
+                <select value={form.partner_id} onChange={(e) => setForm({ ...form, partner_id: e.target.value })}>
+                  <option value="">— None —</option>
+                  {partners.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
             <div className={styles.actions}>
               <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
               <button type="submit" className={styles.btnPrimary} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
@@ -111,7 +143,7 @@ export default function Cases() {
       {loading ? <p>Loading…</p> : (
         <div className={styles.tableWrap}>
           <table>
-            <thead><tr><th>Case No.</th><th>File No.</th><th>Year</th><th>Client</th><th>Status</th><th>Assigned To</th><th></th></tr></thead>
+            <thead><tr><th>Case No.</th><th>File No.</th><th>Year</th><th>Client</th><th>Status</th><th>Associate</th><th>Partner</th><th></th></tr></thead>
             <tbody>
               {cases.length === 0 && <tr><td colSpan={7} className={styles.empty}>No cases found.</td></tr>}
               {cases.map((c) => (
@@ -122,6 +154,7 @@ export default function Cases() {
                   <td>{c.client_name}</td>
                   <td><span className={`${styles.badge} ${c.status === 'active' ? styles.active : styles.closed}`}>{c.status}</span></td>
                   <td>{c.assigned_user?.name ?? '—'}</td>
+                  <td>{c.partner_user?.name ?? '—'}</td>
                   <td className={styles.rowActions}>
                     {canWrite && <button onClick={() => openEdit(c)}>Edit</button>}
                     {canDelete && <button className={styles.btnDanger} onClick={() => handleDelete(c.id)}>Delete</button>}

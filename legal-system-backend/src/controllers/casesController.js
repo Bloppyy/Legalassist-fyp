@@ -3,7 +3,8 @@ const { sendSuccess, createError } = require('../utils/response');
 
 const WITH_RELATIONS = `
   *,
-  assigned_user:users!case_files_assigned_to_fkey(id, name, email, role)
+  assigned_user:users!case_files_assigned_to_fkey(id, name, email, role),
+  partner_user:users!case_files_partner_id_fkey(id, name, email, role)
 `;
 
 const logHistory = async (caseId, action, userId, notes = null) => {
@@ -65,7 +66,7 @@ const getHistory = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { case_number, file_number, year, client_name, description, storage_room, storage_box, storage_notes, assigned_to } = req.body;
+    const { case_number, file_number, year, client_name, description, storage_room, storage_box, storage_notes, assigned_to, partner_id } = req.body;
 
     const { data, error } = await supabase
       .from('case_files')
@@ -79,6 +80,7 @@ const create = async (req, res, next) => {
         storage_box: storage_box || null,
         storage_notes: storage_notes || null,
         assigned_to: assigned_to || null,
+        partner_id: partner_id || null,
         status: 'active',
       })
       .select()
@@ -101,13 +103,14 @@ const update = async (req, res, next) => {
 
     if (fetchError || !existing) return next(createError(404, 'Case file not found'));
 
-    const { case_number, file_number, year, client_name, description, status, storage_room, storage_box, storage_notes, assigned_to } = req.body;
+    const { case_number, file_number, year, client_name, description, status, storage_room, storage_box, storage_notes, assigned_to, partner_id } = req.body;
 
     const { data, error } = await supabase
       .from('case_files')
       .update({
         case_number, file_number, year, client_name, description,
         status, storage_room, storage_box, storage_notes, assigned_to,
+        partner_id: partner_id !== undefined ? (partner_id || null) : undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', req.params.id)

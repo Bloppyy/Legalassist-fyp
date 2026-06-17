@@ -4,7 +4,7 @@ const supabase = require('../config/supabase');
 const ADMIN_ID     = '13f635ac-1415-42a2-b03b-b487eecb12a6';
 const ASSOCIATE_ID = '15970048-141f-41dd-b977-30e316493099';
 const PARTNER_ID   = '3087b473-0177-4849-9486-2e6c1c8c1097';
-const TEMPLATE_ID  = '110479b0-54eb-4a9f-8eb1-c4fa6ee64d29';
+let   TEMPLATE_ID  = null; // resolved at runtime from checklist_templates by name
 
 function daysAgo(n) {
   const d = new Date();
@@ -116,29 +116,55 @@ async function seedGuidelines() {
   console.log('Seeding guidelines…');
   await insertOrThrow('court_guidelines', [
     {
-      title: 'DEMO: e-Filing (EFS) — Panduan Pemfailan Elektronik',
-      content:
-        'Sistem e-Filing membolehkan peguam cara memfailkan dokumen mahkamah secara elektronik melalui portal Kehakiman Malaysia.\n\n' +
-        'Log masuk di https://efiling.kehakiman.gov.my menggunakan nombor kad bar peguam dan kata laluan MyBar.\n\n' +
-        'Dokumen mesti dalam format PDF/A sebelum dimuat naik. Saiz fail maksimum ialah 10MB setiap dokumen.\n\n' +
-        'Setelah pemfailan berjaya, cetakan resit e-Filing sebagai bukti. Salinan keras perlu diserahkan ke kaunter mahkamah dalam masa 3 hari bekerja.',
-      state: 'Wilayah Persekutuan Kuala Lumpur',
+      title: 'DEMO: Court Filing Website (e-Filing)',
+      content: 'Portal rasmi pemfailan elektronik mahkamah Malaysia. Semua dokumen mahkamah sivil difailkan melalui sistem ini.',
+      registry_url: 'https://efs.kehakiman.gov.my/EFSWeb/',
+      state: null,
       category: 'court_filing_website',
       order_index: 1,
     },
     {
-      title: 'DEMO: Kod Amalan Peguam Cara Sivil 2024',
-      content:
-        'Peguam cara dikehendaki hadir di mahkamah dengan pakaian rasmi — jubah hitam dan jabot putih.\n\n' +
-        'Telefon bimbit mesti dimatikan atau diletakkan pada mod senyap semasa prosiding. Tangkapan skrin atau rakaman prosiding adalah dilarang.\n\n' +
-        'Semua dokumen mahkamah mesti diserahkan kepada pihak lawan sekurang-kurangnya 2 hari bekerja sebelum tarikh perbicaraan.\n\n' +
-        'Sebarang permohonan untuk penangguhan perlu dikemukakan secara bertulis dengan alasan yang kukuh.',
-      state: null,
+      title: 'DEMO: KL Court Directory',
+      content: 'Direktori rasmi Mahkamah Kuala Lumpur — nombor telefon, alamat kaunter, dan maklumat pendaftaran.',
+      registry_url: 'https://kl.kehakiman.gov.my/ms/hubungi/direktori',
+      state: 'Wilayah Persekutuan Kuala Lumpur',
       category: 'other',
       order_index: 2,
     },
+    {
+      title: 'DEMO: Penang Court Directory',
+      content: 'Direktori rasmi Mahkamah Pulau Pinang — nombor telefon, alamat, dan maklumat pendaftaran.',
+      registry_url: 'https://pulaupinang.kehakiman.gov.my/ms/hubungi/direktori',
+      state: 'Pulau Pinang',
+      category: 'other',
+      order_index: 3,
+    },
+    {
+      title: 'DEMO: Shah Alam High Court (Civil)',
+      content: 'Maklumat Mahkamah Tinggi Sivil Shah Alam — lokasi, kaunter pendaftaran, dan waktu operasi.',
+      registry_url: 'https://selangor.kehakiman.gov.my/ms/directory/mahkamah-tinggi-sivil-shah-alam',
+      state: 'Selangor',
+      category: 'other',
+      order_index: 4,
+    },
+    {
+      title: 'DEMO: Malaysian Bar — Find Lawyer/Firm',
+      content: 'Direktori peguam cara dan firma guaman yang berdaftar di bawah Malaysian Bar.',
+      registry_url: 'https://www.malaysianbar.org.my/article/find/legal-directories/lawyer-or-law-firm/lawyer-or-law-firm',
+      state: null,
+      category: 'other',
+      order_index: 5,
+    },
+    {
+      title: 'DEMO: Selangor Land Office',
+      content: 'Portal rasmi Pejabat Tanah Klang, Selangor — carian hakmilik tanah dan urusan pejabat tanah.',
+      registry_url: 'https://klang.selangor.gov.my/',
+      state: 'Selangor',
+      category: 'other',
+      order_index: 6,
+    },
   ], 'guidelines');
-  console.log('  2 guidelines created.');
+  console.log('  6 guidelines created.');
 }
 
 // ── Case A — New, early stage ─────────────────────────────────────────────────
@@ -259,7 +285,7 @@ async function seedCaseB() {
       stage_date: dateOnly(daysAgo(75)),
       is_completed: true,
       court_name: 'Mahkamah Tinggi Kuala Lumpur',
-      directions: ['Defendan dikehendaki memfailkan Pembelaan dalam masa 21 hari dari tarikh ini.'],
+      directions: ['Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama. Pengurusan kes seterusnya ditetapkan pada ' + dateOnly(daysAgo(45)) + ' untuk mengemaskini status pemfailan.'],
       direction_source: 'website',
       next_court_date: dateOnly(daysAgo(45)),
       ai_parsed: true,
@@ -274,11 +300,11 @@ async function seedCaseB() {
     },
     {
       stage_type: 'court_direction',
-      title: 'Arahan: Pertukaran Senarai Dokumen',
+      title: 'Arahan: Plaintif Failkan Jawapan kepada Pembelaan',
       stage_date: dateOnly(daysAgo(30)),
       is_completed: true,
       court_name: 'Mahkamah Tinggi Kuala Lumpur',
-      directions: ['Plaintif diarahkan mengemukakan senarai dokumen (Borang 19) kepada Defendan dalam masa 14 hari.'],
+      directions: ['Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama. Pengurusan kes seterusnya ditetapkan pada ' + dateOnly(daysAgo(10)) + ' untuk mengemaskini pemfailan dan untuk arahan-arahan pra-perbicaraan.'],
       direction_source: 'website',
       next_court_date: dateOnly(daysAgo(10)),
       ai_parsed: true,
@@ -293,11 +319,11 @@ async function seedCaseB() {
     },
     {
       stage_type: 'court_direction',
-      title: 'Arahan: Kemukakan Pernyataan Saksi',
+      title: 'Arahan: Pliding Ditutup — Dokumen Pra-Perbicaraan',
       stage_date: dateOnly(daysAgo(10)),
       is_completed: false,
       court_name: 'Mahkamah Tinggi Kuala Lumpur',
-      directions: ['Kedua-dua pihak diarahkan mengemukakan pernyataan saksi dalam tempoh 45 hari dari tarikh ini.'],
+      directions: ['Pliding ditutup. Pengurusan kes pra bicara (Aturan 34 kaedah 2 KKM 2012): Sila failkan: 1) Ikatan Pliding 2) Ikatan Dokumen (Bahagian A, B dan C) 3) Fakta-fakta yang dipersetujui 4) Isu-isu untuk dibicarakan 5) Senarai Saksi 6) Pernyataan Saksi (2 minggu sebelum perbicaraan). Pengurusan kes ditangguhkan ke tarikh ' + dateOnly(daysFromNow(30)) + ' pada masa 9:00AM utk lengkapkan dokumen pra perbicaraan.'],
       direction_source: 'website',
       next_court_date: dateOnly(daysFromNow(30)),
       ai_parsed: true,
@@ -390,7 +416,7 @@ async function seedCaseB() {
     }], `Case B doc: ${rest.title}`);
   }
 
-  // 7 of 13 items done
+  // 7 of 15 items done (~50%)
   await applyChecklist(caseId, 7, ASSOCIATE_ID);
 
   await insertOrThrow('firm_deadlines', [
@@ -448,7 +474,7 @@ async function seedCaseC() {
       stage_date: dateOnly(daysAgo(240)),
       is_completed: true,
       court_name: 'Mahkamah Majistret Petaling Jaya',
-      directions: ['Defendan diarahkan memfailkan Pembelaan dalam masa 14 hari dari tarikh ini.'],
+      directions: ['Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama. Pengurusan kes seterusnya ditetapkan pada ' + dateOnly(daysAgo(180)) + ' untuk mengemaskini status pemfailan.'],
       direction_source: 'website',
       next_court_date: dateOnly(daysAgo(180)),
       ai_parsed: true,
@@ -457,11 +483,11 @@ async function seedCaseC() {
     { stage_type: 'court_appearance', title: 'Pengurusan Kes', stage_date: dateOnly(daysAgo(180)), is_completed: true, court_name: 'Mahkamah Majistret Petaling Jaya' },
     {
       stage_type: 'court_direction',
-      title: 'Arahan: Kemukakan Pernyataan Saksi',
+      title: 'Arahan: Tarikh Perbicaraan Ditetapkan',
       stage_date: dateOnly(daysAgo(150)),
       is_completed: true,
       court_name: 'Mahkamah Majistret Petaling Jaya',
-      directions: ['Pihak-pihak diarahkan mengemukakan pernyataan saksi sebelum tarikh sebutan seterusnya.'],
+      directions: ['Dokumen pra-perbicaraan adalah lengkap. Tarikh-tarikh perbicaraan adalah ditetapkan pada ' + dateOnly(daysAgo(65)) + ' hingga ' + dateOnly(daysAgo(61)) + '. Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan.'],
       direction_source: 'website',
       next_court_date: dateOnly(daysAgo(90)),
       ai_parsed: true,
@@ -519,8 +545,8 @@ async function seedCaseC() {
     }], `Case C doc: ${rest.title}`);
   }
 
-  // All 13 done
-  await applyChecklist(caseId, 13, ASSOCIATE_ID);
+  // All 15 done
+  await applyChecklist(caseId, 15, ASSOCIATE_ID);
 
   console.log(`  Case C: ${caseId}`);
 }
@@ -555,6 +581,16 @@ async function seedFirmDeadlines() {
 async function main() {
   console.log('=== Demo Seed ===\n');
   try {
+    // Resolve checklist template ID by name at runtime
+    const { data: tpl } = await supabase
+      .from('checklist_templates')
+      .select('id')
+      .eq('name', 'Standard Civil Suit (Plaintiff)')
+      .maybeSingle();
+    if (!tpl) throw new Error('Checklist template "Standard Civil Suit (Plaintiff)" not found — run npm run seed:checklist first');
+    TEMPLATE_ID = tpl.id;
+    console.log(`Using checklist template: ${TEMPLATE_ID}\n`);
+
     await cleanup();
     await seedContacts();
     await seedGuidelines();

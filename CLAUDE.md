@@ -55,35 +55,48 @@ canWrite in frontend = ['associate', 'partner', 'admin']
 ## Current Build State (everything here is DONE and working — do not rebuild)
 
 ### Backend (`/legal-system-backend`) — Complete
-- All route modules: users, cases, documents, templates, template-categories, firm-deadlines, contacts, notifications, court-guidelines, case-stages, search, evaluation
+- All route modules: users, cases, documents, templates, template-categories, firm-deadlines, contacts, notifications, court-guidelines, case-stages, search, evaluation, checklist-templates, case-checklist
 - JWT auth + role-based authorisation (`authenticate`, `authorize(roles...)`)
 - 7-status document workflow: draft → pending_associate → pending_partner → approved → filed → served + rejected
 - Word .docx upload via multer → Supabase Storage; text extracted via mammoth
 - POST /api/documents/:id/check-compliance (rule-based) + /check-similarity (sentence transformer)
+- POST /api/documents/:id/classify — calls AI classify, returns predicted_type + confidence
 - POST /api/case-stages/:caseId/parse-direction — accepts file OR req.body.text (mobile OCR path)
+- Full case checklist API: /api/checklist-templates + /api/cases/:caseId/checklist (apply, tick, skip, add, delete, match-direction)
+- case_files.partner_id column + partner_user join in WITH_RELATIONS
 - GET /api/case-stages/stats (admin), GET /api/search?q=
 - GET /api/evaluation/aggregate + POST /api/evaluation/run-batch (admin)
 - Daily 8am MYT cron for deadline notifications (web only)
 - FCM stubbed in notificationService.js
 
 ### Web App (`/web`) — Complete
-- All pages: Login, Dashboard (role-aware), Cases, Case Detail (vertical timeline + history), Timeline (/timeline horizontal), Documents (+ Detail with compliance report, similarity score panel, entity extraction, full workflow buttons), Templates, Guidelines (PDF embed + categories), Contacts, Firm Deadlines, Notifications, Users (admin), Parser Stats (/admin/parser-stats with rule-based vs ML evaluation comparison table), Search
-- Documents linked to cases via case_id; global search bar in header
+- All pages: Login, Dashboard (role-aware), Cases (+ Associate/Partner pickers in create/edit form), Case Detail (vertical timeline + checklist section with progress bar + AI suggestion banner), Timeline (/timeline horizontal), Documents (+ Detail with compliance report, similarity score panel, entity extraction, full workflow buttons; tag chips on list + filter; AI classify banner after upload), Templates, Guidelines (PDF embed + categories), Contacts, Firm Deadlines, Notifications, Users (admin), Parser Stats (/admin/parser-stats), Checklist Templates manager (/checklist-templates)
+- Documents linked to cases via case_id; global search bar in header; document tags (text[]) with chip input and filter
 
 ### Mobile (`/mobile`) — Complete
-- 5 tabs: Deadlines (list + calendar), Cases (detail + read-only vertical timeline), Documents (own docs only, create draft with .docx upload, submit for review, status badges, download), Contacts (tap-to-call), Guidelines (PDF viewer)
+- 5 tabs: Deadlines (list + calendar), Cases (detail + read-only vertical timeline + checklist section with progress bar), Documents (own docs only, create draft with .docx upload, submit for review, status badges, download, tags display), Contacts (tap-to-call), Guidelines (PDF viewer)
 - Camera OCR scanner: scan FAB on all non-documents tabs → ML Kit on-device text extraction → "Parse as Arahan" (case picker → parse-direction → pre-filled stage form) or "Use as Document Text"
-- Base URL: http://10.0.2.2:5000/api
+- Production URL: https://legalassist-backend-vifj.onrender.com/api (dev: http://10.0.2.2:5000/api via kReleaseMode)
 
 ### AI Service (`/ai-service`) — Complete (model training pending)
 - POST /parse-direction — tries ml_parser first, falls back to rule-based; returns parser_used
 - POST /compliance/check (rule-based) + /compliance/check-similarity (per-section cosine similarity, 0.45 flag threshold)
 - POST /classify — document type auto-classification (predicted_type, confidence, auto_selected ≥0.8)
+- POST /checklist/match — matches arahan required_actions against pending checklist item titles (shared sentence transformer)
 - POST /entities/extract, POST /templates/match
 - POST /evaluate-parser (single doc P/R/F1) + /evaluate-parser/run-batch + GET /evaluate-parser/aggregate
 - services/direction_parser.py — rule-based baseline, NEVER MODIFY (FYP comparison baseline)
 - services/ml_parser.py — loads training/model-best/, returns None if absent (triggers fallback)
-- services/ml_models.py — @lru_cache singleton for paraphrase-multilingual-MiniLM-L12-v2 (shared by similarity_scorer + classifier — reuse this for checklist matching)
+- services/ml_models.py — @lru_cache singleton for paraphrase-multilingual-MiniLM-L12-v2 (shared by similarity_scorer + classifier + checklist matching)
+
+### Deployment — Live
+- Backend: https://legalassist-backend-vifj.onrender.com (Render, Node 22)
+- AI service: https://legalassist-ai.onrender.com (Render, Python 3.11)
+- Web: https://legalassist-7sy4c6isf-bloppyys-projects.vercel.app (Vercel)
+
+### Seed Scripts
+- `npm run seed:checklist` — seeds "Standard Civil Suit (Plaintiff)" (15 items) + "Trial Bundle Checklist" (9 items); skips if already exists by name
+- `npm run seed:demo` — idempotent demo data (3 cases, contacts, guidelines with real URLs, firm deadlines); requires seed:checklist to run first
 
 ---
 
@@ -98,6 +111,80 @@ canWrite in frontend = ['associate', 'partner', 'admin']
 | Arahan is short, mostly 1 sentence | ML annotation/training note (above) ✅ |
 | Court system already assigns arahan to firm | Confirms scope boundary — we process arahan, not receive them ✅ |
 | Associates informally decide who handles which case | assigned_to field already covers this lightly ✅ |
+
+---
+
+## Client Document: "Firm Operations Workflow" (received — full case lifecycle reference)
+
+Client provided a detailed written walkthrough of how a real civil suit (writ + statement of claim) progresses end to end, including 5 example arahan in BM (generic/template-style, safe to use — no real client data). This document is authoritative for refining the checklist seed content and confirms several design decisions.
+
+**Full case lifecycle described (drives the revised default checklist below):**
+```
+Client meeting → Open file (hardcopy, parties, court case no., file ref no.)
+→ Assign partner + associate (partner's initials in file reference number)
+→ [If Plaintiff] Letter of Demand → if ignored → File Writ + Statement of Claim
+→ Court issues case number + 1st case management date
+→ 1st case management: direction for Defence OR Memorandum of Appearance (14 days)
+→ Draft (chambering/intern) → review (associate) → escalate if needed (partner)
+  → track-changed amendments back to drafter → finalise
+→ Upload to e-filing (https://efs.kehakiman.gov.my/EFSWeb/) on directed date
+→ Serve to other party (email + hand/courier delivery)
+→ 2nd case management: direction for Reply to Defence (14 days, if Plaintiff)
+→ 3rd case management: "pliding ditutup" — direction for pre-trial bundle:
+  Bundle of Pleadings, Bundle of Documents (Parts A/B/C), Agreed Facts,
+  Issues to be Tried, List of Witnesses, Witness Statements (2 weeks before trial)
+→ Compile bundles, draft witness statements (back-and-forth with client)
+→ Trial dates fixed and communicated to client
+→ Witness statements filed → no further case management → wait for trial
+→ Pre-trial: compile hardcopy checklist (see Trial Bundle Checklist below)
+→ Trial → oral trial directions noted by attending lawyer (written submissions
+  deadlines, bundle of authorities, proceedings notes deadline, decision date)
+→ Decision date → Win: file Order of Court / Lose: consider appeal
+→ Execution of order (if won, order filed+sealed) → Close file
+```
+
+**Confirms (no action needed):**
+- Document workflow exactly matches built system: draft → associate review → partner escalation if needed → revision back to drafter
+- `served` status semantics (email + hand/courier delivery) correct as built
+- `assigned_to` single-field is *insufficient* — see schema change below
+
+**Schema change — dual assignment:**
+```sql
+alter table public.case_files add column partner_id uuid references public.users(id) on delete set null;
+```
+Client confirmed files are assigned to BOTH a partner and an associate (partner's initials appear in the file reference number). `case_files.assigned_to` continues to represent the associate; `partner_id` is new. Update case create/edit UI to capture both.
+
+**New checklist template — Trial Bundle Checklist** (separate concept from case progression — this is "what documents must be physically ready," not "what stage is the case at"). Seed as a second `checklist_templates` row from the document's own table:
+1. Bundle of Pleadings
+2. Agreed Facts
+3. Issues to be Tried
+4. Summary of Case
+5. Common Bundle of Documents (Part A)
+6. Common Bundle of Documents (Part B)
+7. Common Bundle of Documents (Part C)
+8. List of Witnesses
+9. Witness Statements (per witness — add dynamically per case)
+
+**Guidelines seed data — real, safe, client-provided links:**
+| Title | URL | category |
+|---|---|---|
+| Court Filing Website (e-Filing) | https://efs.kehakiman.gov.my/EFSWeb/ | court_filing_website |
+| KL Court Directory | https://kl.kehakiman.gov.my/ms/hubungi/direktori | case_management |
+| Penang Court Directory | https://pulaupinang.kehakiman.gov.my/ms/hubungi/direktori | case_management |
+| Shah Alam High Court (Civil) | https://selangor.kehakiman.gov.my/ms/directory/mahkamah-tinggi-sivil-shah-alam | case_management |
+| Malaysian Bar — Find Lawyer/Firm | https://www.malaysianbar.org.my/article/find/legal-directories/lawyer-or-law-firm/lawyer-or-law-firm | other |
+| Selangor Land Office | https://klang.selangor.gov.my/ | other |
+
+**5 example arahan (BM, generic/template — safe, no real client data) — use as seed/training base, see ML note below:**
+1. *(Defence direction, plaintiff side)* "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama. Pengurusan kes seterusnya ditetapkan pada 14.06.2026 untuk mengemaskini status pemfailan."
+2. *(Reply to defence direction)* "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama. Pengurusan kes seterusnya ditetapkan pada 12.07.2026 untuk mengemaskini pemfailan dan untuk arahan-arahan pra-perbicaraan."
+3. *(Pre-trial bundle direction)* "Pliding ditutup. Pengurusan kes pra bicara (Aturan 34 kaedah 2 KKM 2012): Sila failkan: 1) Ikatan Pliding 2) Ikatan Dokumen... Pengurusan kes ditangguhkan ke tarikh 13.08.2026 pada masa 9:00AM utk lengkapkan dokumen pra perbicaraan."
+4. *(Trial date fixing)* "Dokumen pra-perbicaraan adalah lengkap. Tarikh-tarikh perbicaraan adalah ditetapkan pada 22.03.2027 hingga 26.03.2027. Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan."
+5. *(Post-trial directions)* "Pihak-pihak untuk memfailkan hujahan bertulis dan ikatan autoriti sebelum atau pada 12.06.2027... Keputusan ditetapkan pada 15.07.2027. Pihak-pihak perlu hadir secara fizikal."
+
+**ML training note (sensitivity-safe path):** these 5 examples are generic/template-style, not real case extracts — safe to use directly. Strategy: (1) ask client for more examples in this same generic style covering other stages, rather than real case arahan; (2) synthetically augment these 5 by varying dates/deadlines/court names/party roles to reach the 15-20 target; (3) document this augmentation approach honestly in the FYP report as a response to a real confidentiality constraint — this is a legitimate methodology, not a shortcut.
+
+**Documented limitation (do not build, just note in report):** client describes track-changed amendments going back and forth between reviewer and drafter. System does not support inline document redlining/annotation — flagged as a known limitation / future work item, not a gap to fix now.
 
 ---
 
@@ -175,21 +262,25 @@ DELETE /api/cases/:caseId/checklist/items/:itemId    # delete item (associate+)
 POST   /api/cases/:caseId/checklist/match-direction  # proxy to FastAPI /checklist/match (associate+)
 ```
 
-### Seed: default Malaysian civil suit template
-Seed one default template "Standard Civil Suit (Plaintiff)" with items in order:
-1. Send Letter of Demand
-2. File Writ of Summons + Statement of Claim
-3. Serve Writ on Defendant
-4. Receive Memorandum of Appearance
-5. Receive Defence
-6. File Reply to Defence (if needed)
-7. Attend Case Management
-8. Exchange Documents (Discovery)
-9. File Witness Statements
-10. Pre-Trial Case Management
-11. Trial
-12. Judgment
-13. Post-judgment actions (execution/appeal assessment)
+### Seed: default Malaysian civil suit template (revised against client's full lifecycle doc)
+Seed default template "Standard Civil Suit (Plaintiff)" with items in order — note this supersedes the earlier draft; this sequence is taken directly from the client's described workflow:
+1. First Client Meeting & Open File
+2. Send Letter of Demand
+3. File Writ of Summons + Statement of Claim
+4. 1st Case Management (await direction)
+5. Await Memorandum of Appearance / Draft & File Defence direction received
+6. Serve Filed Document (email + hand/courier)
+7. 2nd Case Management — File Reply to Defence (if required)
+8. 3rd Case Management — Pre-Trial Bundle Direction Received ("pliding ditutup")
+9. Compile Pre-Trial Bundles (Pleadings, Documents Parts A/B/C, Agreed Facts, Issues to be Tried, List of Witnesses)
+10. Draft & File Witness Statements
+11. Trial Dates Fixed
+12. Trial
+13. Await Court Decision
+14. File Order of Court (if won) / Assess Appeal (if lost)
+15. Execute Order / Close File
+
+Also seed the second template **"Trial Bundle Checklist"** as specified above (9 items).
 
 ---
 
@@ -215,13 +306,9 @@ Create `legal-system-backend/src/seed/demoSeed.js`, runnable via `npm run seed:d
 
 ## What's Left To Build (priority order)
 
-1. **Case Progression Checklist** — schema, backend routes, web UI on case detail, template manager, AI matching endpoint + suggestion banner
-2. **Demo seed data script** — enables client review, UAT, and report screenshots
-3. **Document tags** — small, client-requested
-4. **Deployment** — web → Vercel; backend → Render/Railway; AI service → Render; enables remote UAT with the firm (FYP II requires testing on identified users)
-5. **ML training + evaluation** — PENDING client arahan documents (infrastructure already complete)
-6. **Wire /classify into web upload flow** — auto-select document type on upload (small)
-7. **FCM push notifications** — low priority
+1. **Run SQL** (once, in Supabase SQL editor): `alter table public.case_files add column partner_id uuid references public.users(id) on delete set null;` — then run `npm run seed:checklist` (to get revised 15-item template + Trial Bundle Checklist) and `npm run seed:demo` to refresh demo data
+2. **ML training + evaluation** — use the 5 client arahan examples, augment synthetically to 15–20, train spaCy NER model, compare vs rule-based baseline (core research question)
+3. **FCM push notifications** — low priority, already stubbed
 
 ## NOT doing (confirmed)
 - LLM chatbot / "ask about your case" — dilutes research focus, hallucination risk, mention as future work only
@@ -250,15 +337,15 @@ Create `legal-system-backend/src/seed/demoSeed.js`, runnable via `npm run seed:d
 | users | All staff — 6 roles, supervisor_id for Level 1 |
 | template_categories / templates | Word file templates |
 | documents | 7-status workflow, case_id link, **tags (new)** |
-| case_files | Cases with structured storage location |
+| case_files | Cases with structured storage location, **partner_id (new)** + assigned_to (associate) |
 | case_history | Auto audit trail |
 | case_stages | Progression timeline (ai_parsed, confidence) |
-| **checklist_templates (new)** | Reusable matter playbooks |
+| **checklist_templates (new)** | Reusable matter playbooks — seed 2: "Standard Civil Suit (Plaintiff)" + "Trial Bundle Checklist" |
 | **checklist_template_items (new)** | Ordered items per template |
 | **case_checklist_items (new)** | Instantiated checklist per case |
 | firm_deadlines | Practice management reminders |
 | contacts | Directory (address field) |
-| court_guidelines | Categories + PDF |
+| court_guidelines | Categories + PDF, seed with 6 real client-provided URLs |
 | notifications | Web in-app alerts |
 
 New notification types to add: `checklist_item_done`, `checklist_suggestion`
