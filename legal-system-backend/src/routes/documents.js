@@ -20,6 +20,16 @@ const upload = multer({
   },
 });
 
+// 60 MB limit so oversized PDFs can still be received and flagged
+const uploadPdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 60 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') return cb(null, true);
+    cb(new Error('Only PDF files are allowed'));
+  },
+});
+
 router.use(authenticate);
 
 router.get('/', documentsController.getAll);
@@ -83,5 +93,9 @@ router.post('/:id/check-compliance', documentsController.checkCompliance);
 router.post('/:id/check-similarity', documentsController.checkSimilarity);
 router.get('/:id/entities', documentsController.getEntities);
 router.post('/:id/classify', documentsController.classifyDocument);
+
+// Pre-filing validation
+router.post('/:id/upload-filing-pdf', authorize('associate'), uploadPdf.single('file'), documentsController.uploadFilingPdf);
+router.post('/:id/strip-annotations', authorize('associate'), documentsController.stripAnnotationsPdf);
 
 module.exports = router;

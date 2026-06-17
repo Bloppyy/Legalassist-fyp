@@ -4,6 +4,7 @@ const { notifyDocumentStatus } = require('../services/notificationService');
 const { uploadFile, getSignedUrl, deleteFile } = require('../services/storageService');
 const aiService = require('../services/aiService');
 const { extractTextFromDocx } = require('../utils/extractText');
+const { validateFilingPdf, stripAnnotations } = require('../utils/pdfValidation');
 
 const BUCKET = 'documents';
 
@@ -360,12 +361,16 @@ const reject = async (req, res, next) => {
 /**
  * PATCH /api/documents/:id/file
  * Associate flags an approved document as physically filed in court.
+ * Requires final_pdf_url to be set first (upload-filing-pdf endpoint).
  */
 const markFiled = async (req, res, next) => {
   try {
     const doc = await fetchDocument(req.params.id);
     if (doc.status !== 'approved') {
       return next(createError(400, `Cannot mark as filed — document status is "${doc.status}"`));
+    }
+    if (!doc.final_pdf_url) {
+      return next(createError(400, 'Upload and validate the court-ready PDF before marking as filed'));
     }
 
     const now = new Date().toISOString();
@@ -378,6 +383,20 @@ const markFiled = async (req, res, next) => {
     if (error) throw error;
 
     await notifyDocumentStatus(doc.created_by, doc.id, doc.title, 'filed');
+
+    if (doc.case_id) {
+      const checks = doc.filing_checks;
+      const hasIssues = checks && (!checks.size_ok || !checks.copyable_ok || !checks.annotations_ok);
+      await supabase.from('case_history').insert({
+        case_id: doc.case_id,
+        action: 'Document filed',
+        performed_by: req.user.id,
+        notes: hasIssues
+          ? `"${doc.title}" filed with acknowledged pre-filing issues`
+          : `"${doc.title}" filed — all pre-filing checks passed`,
+      });
+    }
+
     return sendSuccess(res, data, 'Document marked as filed');
   } catch (err) { next(err); }
 };
@@ -491,6 +510,78 @@ const getEntities = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/documents/:id/upload-filing-pdf
+ * Associate uploads the court-ready PDF for an approved document.
+ * Runs 3 deterministic checks and stores results in filing_checks.
+ */
+const uploadFilingPdf = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    if (doc.status !== 'approved') {
+      return next(createError(400, 'Filing PDF can only be uploaded for approved documents'));
+    }
+    if (!req.file) return next(createError(400, 'A PDF file is required'));
+
+    const buffer = req.file.buffer;
+    const checks = await validateFilingPdf(buffer);
+
+    // Use a stable path per document so re-uploads overwrite cleanly
+    const storagePath = `filing/${doc.id}.pdf`;
+    await uploadFile(BUCKET, storagePath, buffer, 'application/pdf');
+
+    const { data, error } = await supabase
+      .from('documents')
+      .update({
+        final_pdf_url: storagePath,
+        final_pdf_name: req.file.originalname,
+        filing_checks: checks,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', doc.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return sendSuccess(res, { document: data, filing_checks: checks }, 'Filing PDF uploaded and validated');
+  } catch (err) { next(err); }
+};
+
+/**
+ * POST /api/documents/:id/strip-annotations
+ * Associate strips annotation objects from the stored filing PDF, re-runs all checks.
+ */
+const stripAnnotationsPdf = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    if (!doc.final_pdf_url) {
+      return next(createError(400, 'No filing PDF uploaded yet'));
+    }
+
+    const { data: fileBlob, error: dlErr } = await supabase.storage
+      .from(BUCKET)
+      .download(doc.final_pdf_url);
+    if (dlErr) throw new Error(`Could not download filing PDF: ${dlErr.message}`);
+
+    const original = Buffer.from(await fileBlob.arrayBuffer());
+    const stripped = await stripAnnotations(original);
+
+    await uploadFile(BUCKET, doc.final_pdf_url, stripped, 'application/pdf');
+
+    const checks = await validateFilingPdf(stripped);
+
+    const { data, error } = await supabase
+      .from('documents')
+      .update({ filing_checks: checks, updated_at: new Date().toISOString() })
+      .eq('id', doc.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return sendSuccess(res, { document: data, filing_checks: checks }, 'Annotations removed — filing checks re-run');
+  } catch (err) { next(err); }
+};
+
 const classifyDocument = async (req, res, next) => {
   try {
     const doc = await fetchDocument(req.params.id);
@@ -510,4 +601,5 @@ const classifyDocument = async (req, res, next) => {
 module.exports = {
   getAll, getOne, create, update, reupload, download, remove,
   submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities, classifyDocument,
+  uploadFilingPdf, stripAnnotationsPdf,
 };

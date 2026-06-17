@@ -4,6 +4,7 @@ import {
   getDocument, updateDocument, submitDocument, escalateDocument,
   approveDocument, rejectDocument, fileDocument, serveDocument,
   downloadDocument, reuploadDocument, checkCompliance, checkSimilarity, extractEntities,
+  uploadFilingPdf, stripAnnotationsDoc,
 } from '../../api/documents';
 import { useAuth } from '../../context/AuthContext';
 import { STATUS_COLORS } from '../../constants/colors';
@@ -35,13 +36,21 @@ export default function DocumentDetail() {
   const [downloading, setDownloading] = useState(false);
   const [entities, setEntities] = useState(null);
   const [extractingEntities, setExtractingEntities] = useState(false);
+  const [filingPdfFile, setFilingPdfFile] = useState(null);
+  const [uploadingFilingPdf, setUploadingFilingPdf] = useState(false);
+  const [filingChecks, setFilingChecks] = useState(null);
+  const [filingAcknowledged, setFilingAcknowledged] = useState(false);
+  const [strippingAnnotations, setStrippingAnnotations] = useState(false);
   const reuploadRef = useRef();
+  const filingPdfRef = useRef();
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await getDocument(id);
-      setDoc(res.data.data);
+      const loaded = res.data.data;
+      setDoc(loaded);
+      if (loaded?.filing_checks) setFilingChecks(loaded.filing_checks);
     } catch {
       navigate('/documents', { replace: true });
     } finally { setLoading(false); }
@@ -120,6 +129,34 @@ export default function DocumentDetail() {
     setActionError('');
     try { await escalateDocument(id, { escalation_reason: reason }); setEscalateModal(false); load(); }
     catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
+  };
+
+  const handleUploadFilingPdf = async (e) => {
+    e.preventDefault();
+    if (!filingPdfFile) return;
+    setUploadingFilingPdf(true); setActionError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', filingPdfFile);
+      const res = await uploadFilingPdf(id, fd);
+      setFilingChecks(res.data.data.filing_checks);
+      setFilingAcknowledged(false);
+      setFilingPdfFile(null);
+      if (filingPdfRef.current) filingPdfRef.current.value = '';
+      load();
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'Upload failed');
+    } finally { setUploadingFilingPdf(false); }
+  };
+
+  const handleStripAnnotations = async () => {
+    setStrippingAnnotations(true); setActionError('');
+    try {
+      const res = await stripAnnotationsDoc(id);
+      setFilingChecks(res.data.data.filing_checks);
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'Strip failed');
+    } finally { setStrippingAnnotations(false); }
   };
 
   const handleExtractEntities = async () => {
@@ -204,7 +241,6 @@ export default function DocumentDetail() {
           {canEscalate && <button className={styles.btnSuccess} onClick={() => setEscalateModal(true)}>Escalate to Partner</button>}
           {canApprove && <button className={styles.btnSuccess} onClick={handleApprove}>Approve</button>}
           {canReject && <button className={styles.btnDanger} onClick={() => setRejectModal(true)}>Reject</button>}
-          {canMarkFiled && <button className={styles.btnPrimary} onClick={handleFile}>Mark as Filed</button>}
           {canMarkServed && <button className={styles.btnPrimary} onClick={handleServe}>Mark as Served</button>}
         </div>
       </div>
@@ -240,14 +276,32 @@ export default function DocumentDetail() {
         </div>
       )}
 
-      {doc.status === 'approved' && (
-        <div className={`${styles.infoBox} ${styles.infoBoxSuccess}`}>Document approved — ready to file physically.</div>
+      {doc.status === 'approved' && role !== 'associate' && (
+        <div className={`${styles.infoBox} ${styles.infoBoxSuccess}`}>Document approved — associate will upload the court-ready PDF and mark as filed.</div>
       )}
       {doc.status === 'filed' && (
         <div className={`${styles.infoBox} ${styles.infoBoxSuccess}`}>Document filed in court.</div>
       )}
       {doc.status === 'served' && (
         <div className={`${styles.infoBox} ${styles.infoBoxSuccess}`}>Document served to opponent. Workflow complete.</div>
+      )}
+
+      {doc.status === 'approved' && role === 'associate' && (
+        <FilingPanel
+          doc={doc}
+          filingChecks={filingChecks}
+          filingPdfFile={filingPdfFile}
+          setFilingPdfFile={setFilingPdfFile}
+          filingPdfRef={filingPdfRef}
+          uploadingFilingPdf={uploadingFilingPdf}
+          handleUploadFilingPdf={handleUploadFilingPdf}
+          strippingAnnotations={strippingAnnotations}
+          handleStripAnnotations={handleStripAnnotations}
+          filingAcknowledged={filingAcknowledged}
+          setFilingAcknowledged={setFilingAcknowledged}
+          handleFile={handleFile}
+          styles={styles}
+        />
       )}
 
       {editingTitle && (
@@ -423,6 +477,98 @@ function SimilarityPanel({ result, onClose, styles }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function FilingPanel({
+  doc, filingChecks, filingPdfFile, setFilingPdfFile, filingPdfRef,
+  uploadingFilingPdf, handleUploadFilingPdf,
+  strippingAnnotations, handleStripAnnotations,
+  filingAcknowledged, setFilingAcknowledged,
+  handleFile, styles,
+}) {
+  const checks = filingChecks;
+  const allPass = checks && checks.size_ok && checks.copyable_ok && checks.annotations_ok;
+  const canFile = !!doc.final_pdf_url && (allPass || filingAcknowledged);
+
+  return (
+    <div className={styles.filingPanel}>
+      <h3>Court Filing PDF</h3>
+
+      <p className={styles.filingHint}>
+        {doc.final_pdf_url
+          ? `Current file: ${doc.final_pdf_name}`
+          : 'Export the approved Word document to PDF and upload it here to run pre-filing checks before marking as filed.'}
+      </p>
+
+      <form onSubmit={handleUploadFilingPdf} className={styles.filingUploadRow}>
+        <input
+          ref={filingPdfRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          onChange={(e) => setFilingPdfFile(e.target.files[0] ?? null)}
+        />
+        <button type="submit" className={styles.btnPrimary} disabled={uploadingFilingPdf || !filingPdfFile}>
+          {uploadingFilingPdf ? 'Uploading…' : doc.final_pdf_url ? 'Re-upload & Re-validate' : 'Upload & Validate'}
+        </button>
+      </form>
+
+      {checks && (
+        <div className={styles.filingChecks}>
+          <div className={styles.filingCheckRow}>
+            <span className={checks.size_ok ? styles.filingPass : styles.filingFail}>{checks.size_ok ? '✓' : '✗'}</span>
+            <span className={styles.filingCheckLabel}>File Size</span>
+            <span className={styles.filingCheckValue}>
+              {checks.size_mb} MB {!checks.size_ok && '— exceeds 50 MB limit'}
+            </span>
+          </div>
+
+          <div className={styles.filingCheckRow}>
+            <span className={checks.copyable_ok ? styles.filingPass : styles.filingFail}>{checks.copyable_ok ? '✓' : '✗'}</span>
+            <span className={styles.filingCheckLabel}>PDF Copyable</span>
+            <span className={styles.filingCheckValue}>
+              {checks.copyable_ok ? 'Text-extractable' : 'Scanned / image PDF — not copyable'}
+            </span>
+          </div>
+
+          <div className={styles.filingCheckRow}>
+            <span className={checks.annotations_ok ? styles.filingPass : styles.filingFail}>{checks.annotations_ok ? '✓' : '✗'}</span>
+            <span className={styles.filingCheckLabel}>No Annotations</span>
+            <span className={styles.filingCheckValue}>
+              {checks.annotations_ok ? 'Clean' : 'Annotation objects found'}
+            </span>
+            {!checks.annotations_ok && (
+              <button className={styles.filingFixBtn} onClick={handleStripAnnotations} disabled={strippingAnnotations}>
+                {strippingAnnotations ? 'Removing…' : 'Remove Annotations'}
+              </button>
+            )}
+          </div>
+
+          {!allPass && (
+            <label className={styles.filingAcknowledge}>
+              <input
+                type="checkbox"
+                checked={filingAcknowledged}
+                onChange={(e) => setFilingAcknowledged(e.target.checked)}
+              />
+              I acknowledge the above issues and will resolve them before court submission
+            </label>
+          )}
+
+          <div className={styles.filingActions}>
+            <button className={styles.btnPrimary} onClick={handleFile} disabled={!canFile}>
+              Mark as Filed
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!checks && doc.final_pdf_url && (
+        <div className={styles.filingActions}>
+          <button className={styles.btnPrimary} onClick={handleFile}>Mark as Filed</button>
+        </div>
+      )}
     </div>
   );
 }

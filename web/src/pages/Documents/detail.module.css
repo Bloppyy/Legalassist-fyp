@@ -39,6 +39,22 @@
 .modal h3 { font-size: 16px; font-weight: 600; }
 .modalActions { display: flex; gap: 10px; justify-content: flex-end; }
 
+/* Filing panel */
+.filingPanel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.filingPanel h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.filingHint { font-size: 13px; color: var(--color-text-muted); margin-bottom: 12px; }
+.filingUploadRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.filingChecks { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.filingCheckRow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.filingPass { color: var(--color-success); font-weight: 700; font-size: 16px; width: 18px; flex-shrink: 0; }
+.filingFail { color: var(--color-danger); font-weight: 700; font-size: 16px; width: 18px; flex-shrink: 0; }
+.filingCheckLabel { font-weight: 500; min-width: 110px; }
+.filingCheckValue { color: var(--color-text-muted); flex: 1; }
+.filingFixBtn { font-size: 12px; padding: 4px 10px; flex-shrink: 0; }
+.filingAcknowledge { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; background: var(--color-warning-light, #fef3c7); padding: 10px 14px; border-radius: var(--radius); color: var(--color-warning, #92400e); }
+.filingAcknowledge input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+.filingActions { display: flex; justify-content: flex-end; margin-top: 4px; }
+
 /* Similarity panel */
 .simOverall { display: flex; align-items: baseline; margin-top: 4px; }
 .simRow { display: flex; flex-direction: column; gap: 4px; }

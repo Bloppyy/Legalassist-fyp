@@ -21,3 +21,7 @@ export const checkCompliance   = (id, data) => api.post(`/documents/${id}/check-
 export const checkSimilarity   = (id, data) => api.post(`/documents/${id}/check-similarity`, data);
 export const extractEntities   = (id) => api.get(`/documents/${id}/entities`);
 export const classifyDoc       = (id) => api.post(`/documents/${id}/classify`);
+
+// Pre-filing validation
+export const uploadFilingPdf      = (id, data) => api.post(`/documents/${id}/upload-filing-pdf`, data);
+export const stripAnnotationsDoc  = (id) => api.post(`/documents/${id}/strip-annotations`);
