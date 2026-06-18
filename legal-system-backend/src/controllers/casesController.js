@@ -66,7 +66,7 @@ const getHistory = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { case_number, file_number, year, client_name, description, storage_room, storage_box, storage_notes, assigned_to, partner_id } = req.body;
+    const { case_number, file_number, year, client_name, description, storage_room, storage_box, storage_notes, assigned_to, partner_id, intake_brief, party_role } = req.body;
 
     const { data, error } = await supabase
       .from('case_files')
@@ -81,6 +81,8 @@ const create = async (req, res, next) => {
         storage_notes: storage_notes || null,
         assigned_to: assigned_to || null,
         partner_id: partner_id || null,
+        intake_brief: intake_brief || null,
+        party_role: party_role || null,
         status: 'active',
       })
       .select()
@@ -103,7 +105,7 @@ const update = async (req, res, next) => {
 
     if (fetchError || !existing) return next(createError(404, 'Case file not found'));
 
-    const { case_number, file_number, year, client_name, description, status, storage_room, storage_box, storage_notes, assigned_to, partner_id } = req.body;
+    const { case_number, file_number, year, client_name, description, status, storage_room, storage_box, storage_notes, assigned_to, partner_id, intake_brief, party_role } = req.body;
 
     const { data, error } = await supabase
       .from('case_files')
@@ -111,6 +113,8 @@ const update = async (req, res, next) => {
         case_number, file_number, year, client_name, description,
         status, storage_room, storage_box, storage_notes, assigned_to,
         partner_id: partner_id !== undefined ? (partner_id || null) : undefined,
+        intake_brief: intake_brief !== undefined ? (intake_brief || null) : undefined,
+        party_role: party_role !== undefined ? (party_role || null) : undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', req.params.id)

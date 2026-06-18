@@ -79,6 +79,8 @@ export default function CaseDetail() {
       storage_room:  caseFile.storage_room ?? '',
       storage_box:   caseFile.storage_box ?? '',
       storage_notes: caseFile.storage_notes ?? '',
+      party_role:    caseFile.party_role ?? '',
+      intake_brief:  caseFile.intake_brief ?? '',
     });
     setEditingCase(true);
     setCaseError('');
@@ -161,6 +163,19 @@ export default function CaseDetail() {
                 <div className={styles.field}><label>Storage Box</label><input value={caseForm.storage_box} onChange={e => setCaseForm({ ...caseForm, storage_box: e.target.value })} /></div>
               </div>
               <div className={styles.field}><label>Storage Notes</label><input value={caseForm.storage_notes} onChange={e => setCaseForm({ ...caseForm, storage_notes: e.target.value })} /></div>
+              <div className={styles.field}>
+                <label>Party Role</label>
+                <select value={caseForm.party_role} onChange={e => setCaseForm({ ...caseForm, party_role: e.target.value })}>
+                  <option value="">— Select —</option>
+                  <option value="plaintiff">Plaintiff</option>
+                  <option value="defendant">Defendant</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label>Case Brief — Initial Facts &amp; Advice</label>
+                <textarea rows={5} value={caseForm.intake_brief} onChange={e => setCaseForm({ ...caseForm, intake_brief: e.target.value })} placeholder="Summary of client's situation, key facts, and initial legal advice given at first meeting…" />
+              </div>
               <div className={styles.formActions}>
                 <button type="button" onClick={() => setEditingCase(false)}>Cancel</button>
                 <button type="submit" className={styles.btnPrimary} disabled={caseSaving}>{caseSaving ? 'Saving…' : 'Save'}</button>
@@ -188,6 +203,12 @@ export default function CaseDetail() {
           <div className={styles.infoLabel}>Assigned To</div>
           <div className={styles.infoValue}>{caseFile.assigned_user?.name ?? '—'}</div>
         </div>
+        {caseFile.party_role && (
+          <div className={styles.infoCard}>
+            <div className={styles.infoLabel}>Party Role</div>
+            <div className={styles.infoValue} style={{ textTransform: 'capitalize' }}>{caseFile.party_role}</div>
+          </div>
+        )}
         {(caseFile.storage_room || caseFile.storage_box) && (
           <div className={styles.infoCard}>
             <div className={styles.infoLabel}>Storage</div>
@@ -205,6 +226,13 @@ export default function CaseDetail() {
           <div style={{ padding: '14px 20px' }}>
             <div className={styles.descBlock}>{caseFile.description}</div>
           </div>
+        </div>
+      )}
+
+      {caseFile.intake_brief && (
+        <div className={styles.briefBlock}>
+          <div className={styles.briefLabel}>Case Brief — Initial Facts &amp; Advice</div>
+          <div className={styles.briefText}>{caseFile.intake_brief}</div>
         </div>
       )}
 

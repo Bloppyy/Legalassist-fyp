@@ -10,6 +10,7 @@ const EMPTY_FORM = {
   client_name: '', description: '',
   storage_room: '', storage_box: '', storage_notes: '',
   assigned_to: '', partner_id: '',
+  party_role: '', intake_brief: '',
 };
 
 export default function Cases() {
@@ -53,6 +54,7 @@ export default function Cases() {
       year: c.year, client_name: c.client_name, description: c.description ?? '',
       storage_room: c.storage_room ?? '', storage_box: c.storage_box ?? '', storage_notes: c.storage_notes ?? '',
       assigned_to: c.assigned_to ?? '', partner_id: c.partner_id ?? '',
+      party_role: c.party_role ?? '', intake_brief: c.intake_brief ?? '',
     });
     setShowForm(true);
     setError('');
@@ -66,6 +68,8 @@ export default function Cases() {
         file_number: form.file_number || undefined,
         assigned_to: form.assigned_to || null,
         partner_id: form.partner_id || null,
+        party_role: form.party_role || null,
+        intake_brief: form.intake_brief || null,
       };
       if (editing) await updateCase(editing, payload);
       else await createCase(payload);
@@ -131,6 +135,19 @@ export default function Cases() {
                   {partners.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
+            </div>
+            <div className={styles.field}>
+              <label>Party Role</label>
+              <select value={form.party_role} onChange={(e) => setForm({ ...form, party_role: e.target.value })}>
+                <option value="">— Select —</option>
+                <option value="plaintiff">Plaintiff</option>
+                <option value="defendant">Defendant</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className={styles.field}>
+              <label>Case Brief — Initial Facts &amp; Advice</label>
+              <textarea rows={4} value={form.intake_brief} onChange={(e) => setForm({ ...form, intake_brief: e.target.value })} placeholder="Summary of client's situation, key facts, and initial legal advice given at first meeting…" />
             </div>
             <div className={styles.actions}>
               <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
