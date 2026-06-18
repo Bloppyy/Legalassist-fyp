@@ -1,0 +1,31 @@
+{
+  "document_id": "arahan_base_004",
+  "source_file": "arahan_base_004.txt",
+  "text": "Dokumen pra-perbicaraan adalah lengkap. Tarikh-tarikh perbicaraan adalah ditetapkan pada 22.03.2027 hingga 26.03.2027. Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan.",
+  "labels": {
+    "next_court_date": "2027-03-22",
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      "Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 89,
+      "end": 99,
+      "text": "22.03.2027"
+    },
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 119,
+        "end": 190,
+        "text": "Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan."
+      }
+    ]
+  },
+  "annotated_by": "seed_script",
+  "annotated_at": "2026-06-18T06:39:11.920002+00:00"
+}

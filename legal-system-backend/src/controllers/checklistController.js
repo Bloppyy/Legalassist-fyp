@@ -316,7 +316,15 @@ const matchDirection = async (req, res, next) => {
     if (!items?.length) return sendSuccess(res, { matches: [] });
 
     const result = await aiService.matchChecklistItems(required_actions, items);
-    return sendSuccess(res, result);
+    const matched = (result.matches ?? [])
+      .filter(m => m.best_match_id != null)
+      .map(m => ({
+        action:             m.action,
+        matched_item_id:    m.best_match_id,
+        matched_item_title: m.best_match_title,
+        similarity:         m.score,
+      }));
+    return sendSuccess(res, { matches: matched, has_suggestions: matched.length > 0 });
   } catch (err) {
     if (err.message?.includes('AI service error') || err.cause?.code === 'ECONNREFUSED') {
       return next(createError(503, 'AI service is unavailable'));

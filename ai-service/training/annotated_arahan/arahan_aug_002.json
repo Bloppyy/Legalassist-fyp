@@ -1,0 +1,49 @@
+{
+  "document_id": "arahan_aug_002",
+  "source_file": "arahan_aug_002.txt",
+  "text": "Defendan SYARIKAT MAJU SDN BHD diarahkan untuk memfailkan Pembelaan dalam tempoh 7 hari dari tarikh hari ini dan serahkan kepada Plaintif AHMAD BIN HASSAN pada hari yang sama. Pengurusan kes di Mahkamah Sesyen Petaling Jaya seterusnya ditetapkan pada 05.08.2026.",
+  "labels": {
+    "next_court_date": "2026-08-05",
+    "court_name": "Mahkamah Sesyen Petaling Jaya",
+    "parties": [
+      "SYARIKAT MAJU SDN BHD",
+      "AHMAD BIN HASSAN"
+    ],
+    "required_actions": [
+      "Defendan SYARIKAT MAJU SDN BHD diarahkan untuk memfailkan Pembelaan dalam tempoh 7 hari dari tarikh hari ini dan serahkan kepada Plaintif AHMAD BIN HASSAN pada hari yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 251,
+      "end": 261,
+      "text": "05.08.2026"
+    },
+    "court_name": {
+      "start": 194,
+      "end": 223,
+      "text": "Mahkamah Sesyen Petaling Jaya"
+    },
+    "parties": [
+      {
+        "start": 9,
+        "end": 30,
+        "text": "SYARIKAT MAJU SDN BHD"
+      },
+      {
+        "start": 138,
+        "end": 154,
+        "text": "AHMAD BIN HASSAN"
+      }
+    ],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 175,
+        "text": "Defendan SYARIKAT MAJU SDN BHD diarahkan untuk memfailkan Pembelaan dalam tempoh 7 hari dari tarikh hari ini dan serahkan kepada Plaintif AHMAD BIN HASSAN pada hari yang sama."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

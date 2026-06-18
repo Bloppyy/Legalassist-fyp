@@ -7,11 +7,9 @@ python-dateutil>=2.9.0
 # Rule-based NLP (existing baseline — keep)
 spacy>=3.7.0
 
-# Transformer fine-tuning (training only)
-# Install separately: pip install spacy-transformers torch
-# These are not auto-installed to keep the inference container lightweight.
-# spacy-transformers>=1.3.0
-# torch>=2.0.0
+# Transformer inference (ml_parser uses HuggingFace pipeline for NER)
+transformers>=4.30.0
+torch>=2.0.0
 
 # Sentence transformer (ML compliance, classification — always loaded)
 sentence-transformers>=3.0.0

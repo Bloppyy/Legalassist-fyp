@@ -1,12 +1,12 @@
 """
-ML-based court direction parser using the fine-tuned spaCy transformer model.
+ML-based court direction parser using the fine-tuned HuggingFace NER model
+(bert-base-multilingual-cased fine-tuned on annotated Malaysian arahan).
 
-Loads training/model-best/ at startup (if it exists).
-Returns None when the model is unavailable so the caller can fall back to the
-rule-based parser without any error propagation.
+Loads training/model-best/ at startup if it exists; returns None when the
+model is unavailable so the caller falls back to the rule-based parser.
 
 Entity labels produced by the model:
-    NEXT_COURT_DATE   → next_court_date (ISO string)
+    NEXT_COURT_DATE   → next_court_date (ISO YYYY-MM-DD string)
     COURT_NAME        → court_name
     PARTY             → parties[]
     REQUIRED_ACTION   → required_actions[]
@@ -14,7 +14,6 @@ Entity labels produced by the model:
 
 from __future__ import annotations
 
-from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -34,15 +33,21 @@ _BM_MONTHS = {
 
 
 @lru_cache(maxsize=1)
-def _load_model():
+def _load_pipeline():
     if not MODEL_PATH.exists():
-        print("[ml_parser] No fine-tuned model found at training/model-best/ — ML parser disabled.")
+        print("[ml_parser] No fine-tuned model at training/model-best/ — ML parser disabled.")
         return None
     try:
-        import spacy
-        nlp = spacy.load(str(MODEL_PATH))
+        from transformers import pipeline
+        ner = pipeline(
+            "ner",
+            model=str(MODEL_PATH),
+            tokenizer=str(MODEL_PATH),
+            aggregation_strategy="simple",
+            device=-1,  # CPU
+        )
         print(f"[ml_parser] Fine-tuned model loaded from {MODEL_PATH}")
-        return nlp
+        return ner
     except Exception as e:
         print(f"[ml_parser] WARNING: could not load fine-tuned model — {e}")
         return None
@@ -56,7 +61,6 @@ def _normalise_bm(text: str) -> str:
 
 
 def _parse_date(text: str) -> Optional[str]:
-    """Try to parse a date string and return ISO YYYY-MM-DD, or None on failure."""
     try:
         d = dateutil_parser.parse(_normalise_bm(text), dayfirst=True).date()
         if d.year >= 2020:
@@ -70,10 +74,8 @@ def _confidence_from_entities(
     has_date: bool, has_court: bool, party_count: int, action_count: int
 ) -> float:
     score = 0.0
-    if has_date:
-        score += 0.35
-    if has_court:
-        score += 0.30
+    if has_date:   score += 0.35
+    if has_court:  score += 0.30
     score += min(0.20, party_count * 0.05)
     score += min(0.15, action_count * 0.05)
     return round(min(score, 1.0), 2)
@@ -82,14 +84,18 @@ def _confidence_from_entities(
 def predict(text: str) -> Optional[DirectionParseResponse]:
     """
     Run the fine-tuned NER model on text.
-    Returns a DirectionParseResponse with parser_used='ml', or None if the
-    model is not available (signals the caller to use the rule-based fallback).
+    Returns a DirectionParseResponse (parser_used='ml'), or None if the model
+    is not available — signals caller to use rule-based fallback.
     """
-    nlp = _load_model()
-    if nlp is None:
+    ner = _load_pipeline()
+    if ner is None:
         return None
 
-    doc = nlp(text)
+    try:
+        entities = ner(text)
+    except Exception as e:
+        print(f"[ml_parser] Inference error: {e}")
+        return None
 
     next_court_date: Optional[str] = None
     court_name: Optional[str] = None
@@ -98,9 +104,14 @@ def predict(text: str) -> Optional[DirectionParseResponse]:
     seen_parties: set[str] = set()
     seen_actions: set[str] = set()
 
-    for ent in doc.ents:
-        label = ent.label_
-        span_text = ent.text.strip()
+    for ent in entities:
+        # entity_group is the label (e.g. "NEXT_COURT_DATE")
+        label = ent.get("entity_group") or ent.get("entity", "")
+        # Strip B- / I- prefixes if aggregation didn't happen
+        for prefix in ("B-", "I-"):
+            if label.startswith(prefix):
+                label = label[len(prefix):]
+        span_text = ent.get("word", "").strip()
 
         if label == "NEXT_COURT_DATE" and next_court_date is None:
             parsed = _parse_date(span_text)
@@ -140,4 +151,4 @@ def predict(text: str) -> Optional[DirectionParseResponse]:
 
 
 def is_available() -> bool:
-    return _load_model() is not None
+    return _load_pipeline() is not None

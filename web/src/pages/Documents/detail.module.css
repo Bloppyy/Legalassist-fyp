@@ -53,6 +53,7 @@
 .filingFixBtn { font-size: 12px; padding: 4px 10px; flex-shrink: 0; }
 .filingAcknowledge { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; background: var(--color-warning-light, #fef3c7); padding: 10px 14px; border-radius: var(--radius); color: var(--color-warning, #92400e); }
 .filingAcknowledge input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+.filingAcknowledge span { flex: 1; }
 .filingActions { display: flex; justify-content: flex-end; margin-top: 4px; }
 
 /* Similarity panel */

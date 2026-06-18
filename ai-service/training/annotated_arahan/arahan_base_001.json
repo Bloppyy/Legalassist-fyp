@@ -1,0 +1,31 @@
+{
+  "document_id": "arahan_base_001",
+  "source_file": "arahan_base_001.txt",
+  "text": "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama. Pengurusan kes seterusnya ditetapkan pada 14.06.2026 untuk mengemaskini status pemfailan.",
+  "labels": {
+    "next_court_date": "2026-06-14",
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 167,
+      "end": 177,
+      "text": "14.06.2026"
+    },
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 124,
+        "text": "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama."
+      }
+    ]
+  },
+  "annotated_by": "seed_script",
+  "annotated_at": "2026-06-18T06:39:11.920002+00:00"
+}

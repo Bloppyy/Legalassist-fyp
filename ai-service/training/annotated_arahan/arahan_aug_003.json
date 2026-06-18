@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_003",
+  "source_file": "arahan_aug_003.txt",
+  "text": "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama. Pengurusan kes seterusnya di Mahkamah Tinggi Johor Bahru ditetapkan pada 15.08.2026 untuk mengemaskini pemfailan dan untuk arahan-arahan pra-perbicaraan.",
+  "labels": {
+    "next_court_date": "2026-08-15",
+    "court_name": "Mahkamah Tinggi Johor Bahru",
+    "parties": [],
+    "required_actions": [
+      "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 215,
+      "end": 225,
+      "text": "15.08.2026"
+    },
+    "court_name": {
+      "start": 171,
+      "end": 198,
+      "text": "Mahkamah Tinggi Johor Bahru"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 141,
+        "text": "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

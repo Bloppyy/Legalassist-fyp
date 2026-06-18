@@ -1,0 +1,49 @@
+{
+  "document_id": "arahan_aug_004",
+  "source_file": "arahan_aug_004.txt",
+  "text": "Plaintif NURUL HIDAYAH BINTI RAZALI diarahkan untuk memfailkan Jawapan kepada Pembelaan dalam masa 14 hari dan serahkan kepada Defendan BUMI INDAH SDN BHD pada tarikh yang sama. Pengurusan kes seterusnya ditetapkan pada 10.09.2026 di Mahkamah Tinggi Kuala Lumpur.",
+  "labels": {
+    "next_court_date": "2026-09-10",
+    "court_name": "Mahkamah Tinggi Kuala Lumpur",
+    "parties": [
+      "NURUL HIDAYAH BINTI RAZALI",
+      "BUMI INDAH SDN BHD"
+    ],
+    "required_actions": [
+      "Plaintif NURUL HIDAYAH BINTI RAZALI diarahkan untuk memfailkan Jawapan kepada Pembelaan dalam masa 14 hari dan serahkan kepada Defendan BUMI INDAH SDN BHD pada tarikh yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 220,
+      "end": 230,
+      "text": "10.09.2026"
+    },
+    "court_name": {
+      "start": 234,
+      "end": 262,
+      "text": "Mahkamah Tinggi Kuala Lumpur"
+    },
+    "parties": [
+      {
+        "start": 9,
+        "end": 35,
+        "text": "NURUL HIDAYAH BINTI RAZALI"
+      },
+      {
+        "start": 136,
+        "end": 154,
+        "text": "BUMI INDAH SDN BHD"
+      }
+    ],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 177,
+        "text": "Plaintif NURUL HIDAYAH BINTI RAZALI diarahkan untuk memfailkan Jawapan kepada Pembelaan dalam masa 14 hari dan serahkan kepada Defendan BUMI INDAH SDN BHD pada tarikh yang sama."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

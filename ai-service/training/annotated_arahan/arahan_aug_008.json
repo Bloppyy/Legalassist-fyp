@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_008",
+  "source_file": "arahan_aug_008.txt",
+  "text": "Semua dokumen pra-perbicaraan adalah memuaskan. Tarikh perbicaraan ditetapkan pada 08.05.2027 hingga 12.05.2027 di Mahkamah Sesyen Kuala Lumpur. Saksi-saksi dan peguam pihak-pihak sila hadir pada tarikh tersebut.",
+  "labels": {
+    "next_court_date": "2027-05-08",
+    "court_name": "Mahkamah Sesyen Kuala Lumpur",
+    "parties": [],
+    "required_actions": [
+      "Saksi-saksi dan peguam pihak-pihak sila hadir pada tarikh tersebut."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 83,
+      "end": 93,
+      "text": "08.05.2027"
+    },
+    "court_name": {
+      "start": 115,
+      "end": 143,
+      "text": "Mahkamah Sesyen Kuala Lumpur"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 145,
+        "end": 212,
+        "text": "Saksi-saksi dan peguam pihak-pihak sila hadir pada tarikh tersebut."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

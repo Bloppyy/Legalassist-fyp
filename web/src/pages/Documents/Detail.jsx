@@ -552,7 +552,7 @@ function FilingPanel({
                 checked={filingAcknowledged}
                 onChange={(e) => setFilingAcknowledged(e.target.checked)}
               />
-              I acknowledge the above issues and will resolve them before court submission
+              <span>I acknowledge the above issues and will resolve them before court submission</span>
             </label>
           )}
 

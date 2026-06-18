@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys; sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 """
-Fine-tune multilingual BERT for Malaysian court direction (arahan) NER
-using spaCy's transformer pipeline.
+Fine-tune bert-base-multilingual-cased for Malaysian court direction (arahan) NER
+using HuggingFace transformers - no spaCy transformer pipeline required.
 
 Prerequisites:
-    pip install spacy-transformers torch
+    pip install transformers torch   (already satisfied)
 
 Usage:
     python train_parser.py                 # train with all annotated arahan
-    python train_parser.py --epochs 15     # override epoch count
+    python train_parser.py --epochs 20     # override epoch count
     python train_parser.py --eval-only     # evaluate existing model without retraining
 
-Entity labels extracted:
+Entity labels:
     NEXT_COURT_DATE   — the next court hearing date
-    COURT_NAME        — the issuing court
+    COURT_NAME        — the issuing court name
     PARTY             — plaintiff / defendant / applicant names
     REQUIRED_ACTION   — directed action sentences
 
 Output:
-    training/model-best/      — best checkpoint (highest dev F1)
-    training/model-last/      — final epoch checkpoint
+    training/model-best/   — best checkpoint (highest dev entity F1)
+    training/model-last/   — final epoch checkpoint
 """
 
 import argparse
@@ -32,19 +34,28 @@ TRAINING_DIR = Path(__file__).parent / "annotated_arahan"
 MODEL_BEST   = Path(__file__).parent / "model-best"
 MODEL_LAST   = Path(__file__).parent / "model-last"
 
-ENTITY_LABELS = ["NEXT_COURT_DATE", "COURT_NAME", "PARTY", "REQUIRED_ACTION"]
+TRANSFORMER_MODEL = "bert-base-multilingual-cased"
+DEFAULT_EPOCHS    = 15
+LEARNING_RATE     = 5e-5
+MAX_LENGTH        = 512   # truncation limit — actual texts are 50-100 tokens
 
-LABEL_MAP = {
+# BIO label scheme
+LABELS = [
+    "O",
+    "B-NEXT_COURT_DATE", "I-NEXT_COURT_DATE",
+    "B-COURT_NAME",      "I-COURT_NAME",
+    "B-PARTY",           "I-PARTY",
+    "B-REQUIRED_ACTION", "I-REQUIRED_ACTION",
+]
+LABEL2ID = {l: i for i, l in enumerate(LABELS)}
+ID2LABEL = {i: l for i, l in enumerate(LABELS)}
+
+FIELD_TO_ENTITY = {
     "next_court_date":  "NEXT_COURT_DATE",
     "court_name":       "COURT_NAME",
     "parties":          "PARTY",
     "required_actions": "REQUIRED_ACTION",
 }
-
-TRANSFORMER_MODEL = "bert-base-multilingual-cased"
-DEFAULT_EPOCHS    = 12
-BATCH_SIZE        = 2   # small batches for limited data
-DROPOUT           = 0.2
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +65,7 @@ DROPOUT           = 0.2
 def load_annotations() -> list[dict]:
     files = sorted(TRAINING_DIR.glob("*.json"))
     if not files:
-        sys.exit(f"No annotation files in {TRAINING_DIR}. Run annotate.py first.")
+        sys.exit(f"No annotation files in {TRAINING_DIR}. Run seed_annotations.py first.")
 
     docs = []
     skipped = 0
@@ -62,7 +73,6 @@ def load_annotations() -> list[dict]:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
             spans = data.get("spans", {})
-            # Require at least one span annotation for NER training
             has_spans = (
                 spans.get("next_court_date") is not None
                 or spans.get("court_name") is not None
@@ -76,180 +86,212 @@ def load_annotations() -> list[dict]:
         except Exception as e:
             print(f"Warning: could not load {f.name}: {e}")
 
-    print(f"Loaded {len(docs)} annotated documents ({skipped} skipped — no spans).")
+    print(f"Loaded {len(docs)} annotated documents ({skipped} skipped - no spans).")
     return docs
 
 
-def to_spacy_entities(annotation: dict) -> list[tuple[int, int, str]]:
-    """Convert annotation JSON spans to spaCy (start, end, label) tuples."""
-    entities: list[tuple[int, int, str]] = []
+def get_char_spans(annotation: dict) -> list[tuple[int, int, str]]:
+    """Extract (char_start, char_end, entity_type) from annotation spans."""
     spans = annotation.get("spans", {})
-
-    # Single spans
+    char_spans = []
     for field in ("next_court_date", "court_name"):
-        span = spans.get(field)
-        if span:
-            entities.append((span["start"], span["end"], LABEL_MAP[field]))
-
-    # List spans
+        s = spans.get(field)
+        if s:
+            char_spans.append((s["start"], s["end"], FIELD_TO_ENTITY[field]))
     for field in ("parties", "required_actions"):
-        for span in spans.get(field, []):
-            entities.append((span["start"], span["end"], LABEL_MAP[field]))
+        for s in spans.get(field, []):
+            char_spans.append((s["start"], s["end"], FIELD_TO_ENTITY[field]))
+    return char_spans
 
-    # Remove overlapping spans (keep first)
-    entities.sort(key=lambda e: e[0])
-    clean = []
-    last_end = -1
-    for start, end, label in entities:
-        if start >= last_end:
-            clean.append((start, end, label))
-            last_end = end
 
-    return clean
+# ---------------------------------------------------------------------------
+# Tokenization and BIO label alignment
+# ---------------------------------------------------------------------------
+
+def tokenize_and_align(tokenizer, text: str, char_spans: list[tuple[int, int, str]]) -> dict:
+    """
+    Tokenize text and align character-level span labels to subword tokens.
+    Returns dict with input_ids, attention_mask, token_type_ids, labels.
+    Special tokens and padding get label -100 (ignored in loss).
+    """
+    encoding = tokenizer(
+        text,
+        return_offsets_mapping=True,
+        truncation=True,
+        max_length=MAX_LENGTH,
+        padding=False,          # no padding — process actual length only (batch size = 1)
+        return_tensors=None,
+    )
+
+    offset_mapping = encoding.pop("offset_mapping")
+    sequence_ids  = encoding.sequence_ids() if hasattr(encoding, "sequence_ids") else None
+    token_labels  = []
+
+    for i, (tok_start, tok_end) in enumerate(offset_mapping):
+        # Special / padding tokens
+        is_special = (sequence_ids[i] is None) if sequence_ids is not None else (tok_start == 0 and tok_end == 0)
+        if is_special:
+            token_labels.append(-100)
+            continue
+
+        label_id = LABEL2ID["O"]
+        for span_start, span_end, entity_type in char_spans:
+            # Token overlaps with span?
+            if tok_start >= span_start and tok_end <= span_end:
+                bio_prefix = "B-" if tok_start == span_start else "I-"
+                label_id = LABEL2ID[bio_prefix + entity_type]
+                break
+
+        token_labels.append(label_id)
+
+    encoding["labels"] = token_labels
+    return encoding
+
+
+# ---------------------------------------------------------------------------
+# Entity-level F1 (no external library required)
+# ---------------------------------------------------------------------------
+
+def _extract_entities(bio_seq: list[str]) -> set[tuple[int, int, str]]:
+    entities: set[tuple[int, int, str]] = set()
+    cur = None
+    for i, tag in enumerate(bio_seq):
+        if tag.startswith("B-"):
+            if cur:
+                entities.add(cur)
+            cur = (i, i, tag[2:])
+        elif tag.startswith("I-") and cur and tag[2:] == cur[2]:
+            cur = (cur[0], i, cur[2])
+        else:
+            if cur:
+                entities.add(cur)
+            cur = None
+    if cur:
+        entities.add(cur)
+    return entities
+
+
+def entity_f1(pred_bio: list[str], true_bio: list[str]) -> float:
+    pe = _extract_entities(pred_bio)
+    te = _extract_entities(true_bio)
+    tp = len(pe & te)
+    precision = tp / len(pe) if pe else 0.0
+    recall    = tp / len(te) if te else 0.0
+    return (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Evaluation pass
+# ---------------------------------------------------------------------------
+
+def evaluate_model(model, tokenizer, data: list[dict]) -> float:
+    import torch
+    model.eval()
+    all_preds, all_labels = [], []
+    with torch.no_grad():
+        for ann in data:
+            enc = tokenize_and_align(tokenizer, ann["text"], get_char_spans(ann))
+            raw_labels = enc.pop("labels")
+            inputs = {k: torch.tensor([v]) for k, v in enc.items()}
+            logits = model(**inputs).logits[0]
+            preds  = logits.argmax(-1).tolist()
+            for pred, lbl in zip(preds, raw_labels):
+                if lbl != -100:
+                    all_preds.append(ID2LABEL.get(pred, "O"))
+                    all_labels.append(ID2LABEL.get(lbl, "O"))
+    return entity_f1(all_preds, all_labels)
 
 
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
 
-def build_nlp():
-    """Create a blank spaCy pipeline with transformer + NER."""
-    import spacy
-    try:
-        import spacy_transformers  # noqa: F401
-    except ImportError:
-        sys.exit(
-            "spacy-transformers not installed.\n"
-            "Run:  pip install spacy-transformers torch\n"
-            "Note: requires ~2–5 GB disk for model weights."
-        )
-
-    nlp = spacy.blank("en")
-
-    transformer_config = {
-        "model": {
-            "@architectures": "spacy-transformers.TransformerModel.v3",
-            "name": TRANSFORMER_MODEL,
-            "tokenizer_config": {"use_fast": True},
-            "transformer_config": {},
-            "mixed_precision": False,
-            "grad_scaler_config": {},
-        }
-    }
-    nlp.add_pipe("transformer", config=transformer_config)
-
-    ner_config = {
-        "model": {
-            "@architectures": "spacy.TransitionBasedParser.v2",
-            "state_type": "ner",
-            "extra_state_tokens": False,
-            "hidden_width": 64,
-            "maxout_pieces": 2,
-            "use_upper": True,
-            "nO": None,
-            "tok2vec": {
-                "@architectures": "spacy-transformers.TransformerListener.v1",
-                "grad_factor": 1.0,
-                "upstream": "transformer",
-                "pooling": {"@layers": "reduce_mean.v1"},
-            },
-        }
-    }
-    ner = nlp.add_pipe("ner", last=True, config=ner_config)
-    for label in ENTITY_LABELS:
-        ner.add_label(label)
-
-    return nlp
-
-
-def make_examples(nlp, data: list[dict]):
-    """Convert annotation dicts to spaCy Example objects."""
-    import spacy
-    from spacy.training import Example
-
-    examples = []
-    for ann in data:
-        text = ann["text"]
-        entities = to_spacy_entities(ann)
-        doc = nlp.make_doc(text)
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            examples.append(example)
-        except Exception as e:
-            print(f"  Warning: skipping {ann['document_id']} — {e}")
-    return examples
-
-
 def train(epochs: int):
-    import spacy
-    from spacy.util import minibatch, compounding
+    import torch
+    from transformers import AutoTokenizer, AutoModelForTokenClassification
 
     annotations = load_annotations()
     if len(annotations) < 2:
         sys.exit(
-            f"Need at least 2 annotated documents with spans.\n"
-            f"Currently have {len(annotations)}. Add more annotations with annotate.py."
+            f"Need at least 2 annotated documents with spans (have {len(annotations)}).\n"
+            f"Run python seed_annotations.py && python augment.py first."
         )
 
     random.shuffle(annotations)
-    split = max(1, int(len(annotations) * 0.8))
+    split      = max(1, int(len(annotations) * 0.8))
     train_data = annotations[:split]
     dev_data   = annotations[split:] or annotations[:1]
 
-    print(f"Train: {len(train_data)} docs | Dev: {len(dev_data)} docs")
-    print(f"Transformer: {TRANSFORMER_MODEL}")
-    print(f"Epochs: {epochs}\n")
+    print(f"Transformer : {TRANSFORMER_MODEL}")
+    print(f"Train docs  : {len(train_data)}  |  Dev docs: {len(dev_data)}")
+    print(f"Epochs      : {epochs}\n")
+    print("Downloading / loading tokenizer + model weights...")
 
-    nlp = build_nlp()
-    optimizer = nlp.initialize(lambda: make_examples(nlp, train_data))
+    tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL)
+    model = AutoModelForTokenClassification.from_pretrained(
+        TRANSFORMER_MODEL,
+        num_labels=len(LABELS),
+        id2label=ID2LABEL,
+        label2id=LABEL2ID,
+        ignore_mismatched_sizes=True,
+    )
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
     best_f1 = -1.0
+    print("-" * 60)
+
     for epoch in range(1, epochs + 1):
+        model.train()
         random.shuffle(train_data)
-        losses: dict = {}
-        examples = make_examples(nlp, train_data)
+        epoch_loss = 0.0
 
-        for batch in minibatch(examples, size=compounding(BATCH_SIZE, 8, 1.001)):
-            nlp.update(batch, drop=DROPOUT, sgd=optimizer, losses=losses)
+        for ann in train_data:
+            enc = tokenize_and_align(tokenizer, ann["text"], get_char_spans(ann))
+            labels = torch.tensor([enc.pop("labels")])
+            inputs = {k: torch.tensor([v]) for k, v in enc.items()}
 
-        # Evaluate on dev set
-        dev_examples = make_examples(nlp, dev_data)
-        scores = nlp.evaluate(dev_examples)
-        f1 = round(scores.get("ents_f", 0.0), 3)
-        prec = round(scores.get("ents_p", 0.0), 3)
-        rec  = round(scores.get("ents_r", 0.0), 3)
-        ner_loss = round(losses.get("ner", 0.0), 2)
+            outputs = model(**inputs, labels=labels)
+            loss = outputs.loss
 
-        flag = "  ← best" if f1 > best_f1 else ""
-        print(f"Epoch {epoch:>3}/{epochs}  loss={ner_loss:>8.2f}  "
-              f"P={prec:.3f}  R={rec:.3f}  F1={f1:.3f}{flag}")
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(train_data)
+        f1 = evaluate_model(model, tokenizer, dev_data)
+        flag = "  <-- best" if f1 > best_f1 else ""
+        print(f"Epoch {epoch:>3}/{epochs}  loss={avg_loss:>7.4f}  dev_F1={f1:.3f}{flag}")
 
         if f1 > best_f1:
             best_f1 = f1
             MODEL_BEST.mkdir(parents=True, exist_ok=True)
-            nlp.to_disk(MODEL_BEST)
+            model.save_pretrained(MODEL_BEST)
+            tokenizer.save_pretrained(MODEL_BEST)
 
-    # Save final checkpoint
     MODEL_LAST.mkdir(parents=True, exist_ok=True)
-    nlp.to_disk(MODEL_LAST)
+    model.save_pretrained(MODEL_LAST)
+    tokenizer.save_pretrained(MODEL_LAST)
 
-    print(f"\n{'─'*60}")
+    print("-" * 60)
     print(f"Training complete.  Best dev F1: {best_f1:.3f}")
     print(f"Best model saved to : {MODEL_BEST}")
-    print(f"Last model saved to : {MODEL_LAST}")
     print()
     print("Next steps:")
-    print("  1. Restart ai-service — ml_parser will load the fine-tuned model automatically")
-    print("  2. Run POST /evaluate-parser/run-batch to compute evaluation metrics")
-    print("  3. View results on /admin/parser-stats")
+    print("  1. Restart ai-service (ml_parser auto-loads from model-best/)")
+    print("  2. POST /evaluate-parser/run-batch to compute P/R/F1")
+    print("  3. View /admin/parser-stats for the rule-based vs ML comparison table")
 
 
 # ---------------------------------------------------------------------------
-# Evaluate only
+# Evaluate only (requires trained model)
 # ---------------------------------------------------------------------------
 
 def evaluate_only():
-    import spacy
+    import torch
+    from transformers import AutoTokenizer, AutoModelForTokenClassification
 
     if not MODEL_BEST.exists():
         sys.exit(f"No trained model at {MODEL_BEST}. Run training first.")
@@ -258,22 +300,12 @@ def evaluate_only():
     if not annotations:
         sys.exit("No annotations to evaluate.")
 
-    nlp = spacy.load(str(MODEL_BEST))
-    from spacy.training import Example
+    tokenizer = AutoTokenizer.from_pretrained(str(MODEL_BEST))
+    model     = AutoModelForTokenClassification.from_pretrained(str(MODEL_BEST))
 
-    examples = make_examples(nlp, annotations)
-    scores = nlp.evaluate(examples)
-
-    print(f"\nEvaluation on ALL {len(annotations)} annotated documents:")
-    print(f"  Precision : {scores.get('ents_p', 0):.3f}")
-    print(f"  Recall    : {scores.get('ents_r', 0):.3f}")
-    print(f"  F1        : {scores.get('ents_f', 0):.3f}")
-
-    per_type = scores.get("ents_per_type", {})
-    if per_type:
-        print(f"\n  Per-label breakdown:")
-        for label, m in per_type.items():
-            print(f"    {label:<22} P={m['p']:.3f}  R={m['r']:.3f}  F={m['f']:.3f}")
+    f1 = evaluate_model(model, tokenizer, annotations)
+    print(f"\nEvaluation on all {len(annotations)} annotated documents:")
+    print(f"  Entity F1: {f1:.3f}")
 
 
 # ---------------------------------------------------------------------------
@@ -281,11 +313,9 @@ def evaluate_only():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Fine-tune transformer NER for arahan parsing")
-    ap.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS,
-                    help=f"Training epochs (default: {DEFAULT_EPOCHS})")
-    ap.add_argument("--eval-only", action="store_true",
-                    help="Evaluate existing model without retraining")
+    ap = argparse.ArgumentParser(description="Fine-tune multilingual BERT for arahan NER")
+    ap.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
+    ap.add_argument("--eval-only", action="store_true")
     args = ap.parse_args()
 
     if args.eval_only:

@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_001",
+  "source_file": "arahan_aug_001.txt",
+  "text": "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama. Pengurusan kes seterusnya ditetapkan pada 21.07.2026 di Mahkamah Tinggi Shah Alam untuk mengemaskini status pemfailan.",
+  "labels": {
+    "next_court_date": "2026-07-21",
+    "court_name": "Mahkamah Tinggi Shah Alam",
+    "parties": [],
+    "required_actions": [
+      "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 167,
+      "end": 177,
+      "text": "21.07.2026"
+    },
+    "court_name": {
+      "start": 181,
+      "end": 206,
+      "text": "Mahkamah Tinggi Shah Alam"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 124,
+        "text": "Defendan diarahkan untuk memfailkan Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Plaintif pada hari yang sama."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

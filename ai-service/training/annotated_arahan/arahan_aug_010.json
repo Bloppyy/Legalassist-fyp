@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_010",
+  "source_file": "arahan_aug_010.txt",
+  "text": "Mahkamah telah mendengar hujahan lisan pihak-pihak. Hujahan bertulis dan ikatan autoriti hendaklah difailkan pada atau sebelum 20.09.2027. Keputusan ditetapkan pada 25.10.2027 di Mahkamah Rayuan Kuala Lumpur. Pihak-pihak perlu hadir secara fizikal.",
+  "labels": {
+    "next_court_date": "2027-10-25",
+    "court_name": "Mahkamah Rayuan Kuala Lumpur",
+    "parties": [],
+    "required_actions": [
+      "Hujahan bertulis dan ikatan autoriti hendaklah difailkan pada atau sebelum 20.09.2027."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 165,
+      "end": 175,
+      "text": "25.10.2027"
+    },
+    "court_name": {
+      "start": 179,
+      "end": 207,
+      "text": "Mahkamah Rayuan Kuala Lumpur"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 52,
+        "end": 138,
+        "text": "Hujahan bertulis dan ikatan autoriti hendaklah difailkan pada atau sebelum 20.09.2027."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

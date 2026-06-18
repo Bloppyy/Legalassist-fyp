@@ -107,8 +107,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Widget _buildFilterBar() {
-    const filters = <String>['', 'draft', 'pending_associate', 'pending_partner', 'approved', 'rejected'];
-    const labels = <String>['All', 'Draft', 'Pending', 'Escalated', 'Approved', 'Rejected'];
+    const filters = <String>['', 'draft', 'pending_associate', 'pending_partner', 'approved', 'filed', 'served', 'rejected'];
+    const labels = <String>['All', 'Draft', 'Pending', 'Escalated', 'Approved', 'Filed', 'Served', 'Rejected'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),

@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_009",
+  "source_file": "arahan_aug_009.txt",
+  "text": "Perbicaraan telah tamat. Pihak-pihak diarahkan untuk memfailkan hujahan bertulis dan ikatan autoriti di Mahkamah Tinggi Kuala Lumpur sebelum atau pada 30.08.2027. Keputusan akan disampaikan pada 15.09.2027.",
+  "labels": {
+    "next_court_date": "2027-09-15",
+    "court_name": "Mahkamah Tinggi Kuala Lumpur",
+    "parties": [],
+    "required_actions": [
+      "Pihak-pihak diarahkan untuk memfailkan hujahan bertulis dan ikatan autoriti di Mahkamah Tinggi Kuala Lumpur sebelum atau pada 30.08.2027."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 195,
+      "end": 205,
+      "text": "15.09.2027"
+    },
+    "court_name": {
+      "start": 104,
+      "end": 132,
+      "text": "Mahkamah Tinggi Kuala Lumpur"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 25,
+        "end": 162,
+        "text": "Pihak-pihak diarahkan untuk memfailkan hujahan bertulis dan ikatan autoriti di Mahkamah Tinggi Kuala Lumpur sebelum atau pada 30.08.2027."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

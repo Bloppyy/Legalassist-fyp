@@ -1,0 +1,31 @@
+{
+  "document_id": "arahan_base_002",
+  "source_file": "arahan_base_002.txt",
+  "text": "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama. Pengurusan kes seterusnya ditetapkan pada 12.07.2026 untuk mengemaskini pemfailan dan untuk arahan-arahan pra-perbicaraan.",
+  "labels": {
+    "next_court_date": "2026-07-12",
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 184,
+      "end": 194,
+      "text": "12.07.2026"
+    },
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 141,
+        "text": "Plaintif diarahkan untuk memfailkan Jawapan kepada Pembelaan 14 hari dari tarikh hari ini dan serahkan kepada Defendan pada tarikh yang sama."
+      }
+    ]
+  },
+  "annotated_by": "seed_script",
+  "annotated_at": "2026-06-18T06:39:11.920002+00:00"
+}

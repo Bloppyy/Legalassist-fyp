@@ -1,0 +1,31 @@
+{
+  "document_id": "arahan_base_005",
+  "source_file": "arahan_base_005.txt",
+  "text": "Pihak-pihak untuk memfailkan hujahan bertulis dan ikatan autoriti sebelum atau pada 12.06.2027. Nota prosiding hendaklah difailkan sebelum 30.06.2027. Keputusan ditetapkan pada 15.07.2027. Pihak-pihak perlu hadir secara fizikal.",
+  "labels": {
+    "next_court_date": "2027-07-15",
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      "Pihak-pihak untuk memfailkan hujahan bertulis dan ikatan autoriti sebelum atau pada 12.06.2027."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 177,
+      "end": 187,
+      "text": "15.07.2027"
+    },
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 95,
+        "text": "Pihak-pihak untuk memfailkan hujahan bertulis dan ikatan autoriti sebelum atau pada 12.06.2027."
+      }
+    ]
+  },
+  "annotated_by": "seed_script",
+  "annotated_at": "2026-06-18T06:39:11.920002+00:00"
+}

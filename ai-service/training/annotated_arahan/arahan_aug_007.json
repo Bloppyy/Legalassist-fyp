@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_007",
+  "source_file": "arahan_aug_007.txt",
+  "text": "Dokumen pra-perbicaraan telah lengkap. Tarikh-tarikh perbicaraan ditetapkan pada 10.04.2027 hingga 14.04.2027 di Mahkamah Tinggi Shah Alam. Pihak-pihak diarahkan untuk memfailkan Pernyataan Saksi 2 minggu sebelum perbicaraan.",
+  "labels": {
+    "next_court_date": "2027-04-10",
+    "court_name": "Mahkamah Tinggi Shah Alam",
+    "parties": [],
+    "required_actions": [
+      "Pihak-pihak diarahkan untuk memfailkan Pernyataan Saksi 2 minggu sebelum perbicaraan."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 81,
+      "end": 91,
+      "text": "10.04.2027"
+    },
+    "court_name": {
+      "start": 113,
+      "end": 138,
+      "text": "Mahkamah Tinggi Shah Alam"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 140,
+        "end": 225,
+        "text": "Pihak-pihak diarahkan untuk memfailkan Pernyataan Saksi 2 minggu sebelum perbicaraan."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

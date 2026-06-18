@@ -1,0 +1,49 @@
+{
+  "document_id": "arahan_aug_011",
+  "source_file": "arahan_aug_011.txt",
+  "text": "Defendan WORLD TECH SDN BHD diarahkan untuk memfailkan Memorandum Kehadiran dalam tempoh 14 hari dari tarikh serahan writ dan serahkan kepada Plaintif LEE AH KOW. Pengurusan kes pertama di Mahkamah Tinggi Ipoh ditetapkan pada 18.06.2026.",
+  "labels": {
+    "next_court_date": "2026-06-18",
+    "court_name": "Mahkamah Tinggi Ipoh",
+    "parties": [
+      "WORLD TECH SDN BHD",
+      "LEE AH KOW"
+    ],
+    "required_actions": [
+      "Defendan WORLD TECH SDN BHD diarahkan untuk memfailkan Memorandum Kehadiran dalam tempoh 14 hari dari tarikh serahan writ dan serahkan kepada Plaintif LEE AH KOW."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 226,
+      "end": 236,
+      "text": "18.06.2026"
+    },
+    "court_name": {
+      "start": 189,
+      "end": 209,
+      "text": "Mahkamah Tinggi Ipoh"
+    },
+    "parties": [
+      {
+        "start": 9,
+        "end": 27,
+        "text": "WORLD TECH SDN BHD"
+      },
+      {
+        "start": 151,
+        "end": 161,
+        "text": "LEE AH KOW"
+      }
+    ],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 162,
+        "text": "Defendan WORLD TECH SDN BHD diarahkan untuk memfailkan Memorandum Kehadiran dalam tempoh 14 hari dari tarikh serahan writ dan serahkan kepada Plaintif LEE AH KOW."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/ocr_service.dart';
 import '../../services/api_service.dart';
 import '../../services/cases_service.dart';
@@ -219,12 +221,15 @@ class _ScannerScreenState extends State<ScannerScreen> {
           if (_isParsing)
             const Center(child: CircularProgressIndicator())
           else ...[
-            FilledButton.icon(
-              onPressed: _parseAsArahan,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Parse as Arahan'),
-            ),
-            const SizedBox(height: 8),
+            if (['associate', 'partner', 'admin']
+                .contains(context.read<AuthProvider>().role)) ...[
+              FilledButton.icon(
+                onPressed: _parseAsArahan,
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('Parse as Arahan'),
+              ),
+              const SizedBox(height: 8),
+            ],
             OutlinedButton.icon(
               onPressed: _useAsDocumentText,
               icon: const Icon(Icons.edit_note),
@@ -477,6 +482,7 @@ class _StageConfirmSheetState extends State<_StageConfirmSheet> {
         'stage_type': _stageType,
         'title': _titleCtrl.text.trim(),
         'stage_date': _stageDate!.toIso8601String().split('T')[0],
+        'next_court_date': _stageDate!.toIso8601String().split('T')[0],
         'court_name': _courtCtrl.text.trim().isEmpty ? null : _courtCtrl.text.trim(),
         'directions': _directionsCtrl.text.trim().isEmpty ? null : _directionsCtrl.text.trim(),
         'direction_source': 'physical',

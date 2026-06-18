@@ -58,27 +58,20 @@ canWrite in frontend = ['associate', 'partner', 'admin']
 ## Current Build State (everything here is DONE and working — do not rebuild)
 
 ### Backend (`/legal-system-backend`) — Complete
-- All route modules: users, cases, documents, templates, template-categories, firm-deadlines, contacts, notifications, court-guidelines, case-stages, search, evaluation, checklist-templates, case checklists
+- All route modules: users, cases, documents, templates, template-categories, firm-deadlines, contacts, notifications, court-guidelines, case-stages, search, evaluation
 - JWT auth + role-based authorisation (`authenticate`, `authorize(roles...)`)
 - 7-status document workflow: draft → pending_associate → pending_partner → approved → filed → served + rejected
 - Word .docx upload via multer → Supabase Storage; text extracted via mammoth
 - POST /api/documents/:id/check-compliance (rule-based) + /check-similarity (sentence transformer)
-- POST /api/documents/:id/upload-filing-pdf (associate, approved only) — runs 3 deterministic pre-filing checks (size ≤50 MB, pdf copyable, no annotations), stores filing_checks jsonb + final_pdf_url
-- POST /api/documents/:id/strip-annotations (associate) — strips Annots from stored PDF via pdf-lib, re-runs checks
-- PATCH /api/documents/:id/file now gates on final_pdf_url existing; logs to case_history with pass/fail note
 - POST /api/case-stages/:caseId/parse-direction — accepts file OR req.body.text (mobile OCR path)
 - GET /api/case-stages/stats (admin), GET /api/search?q=
 - GET /api/evaluation/aggregate + POST /api/evaluation/run-batch (admin)
 - Daily 8am MYT cron for deadline notifications (web only)
 - FCM stubbed in notificationService.js
-- case_files.partner_id (new) — dual assignment (associate + partner); returns partner_user join
-- documents.tags text[] — tag filter on GET /api/documents?tag=
-- documents.final_pdf_url / final_pdf_name / filing_checks (new) — pre-filing validation
 
 ### Web App (`/web`) — Complete
-- All pages: Login, Dashboard (role-aware), Cases, Case Detail (vertical timeline + history + checklist panel + progress bar), Timeline (/timeline horizontal), Documents (+ Detail with compliance report, similarity score panel, entity extraction, full workflow buttons, pre-filing validation panel), Templates, Guidelines (PDF embed + categories), Contacts, Firm Deadlines, Notifications, Users (admin), Parser Stats (/admin/parser-stats with rule-based vs ML evaluation comparison table), Search, Checklist Templates manager
+- All pages: Login, Dashboard (role-aware), Cases, Case Detail (vertical timeline + history), Timeline (/timeline horizontal), Documents (+ Detail with compliance report, similarity score panel, entity extraction, full workflow buttons), Templates, Guidelines (PDF embed + categories), Contacts, Firm Deadlines, Notifications, Users (admin), Parser Stats (/admin/parser-stats with rule-based vs ML evaluation comparison table), Search
 - Documents linked to cases via case_id; global search bar in header
-- Document Detail: when status=approved (associate role), shows Court Filing PDF panel — upload PDF, see 3 check rows (size / copyable / annotations), "Remove Annotations" auto-fix button, acknowledge checkbox if issues, "Mark as Filed" gated on PDF upload + acknowledgement
 
 ### Mobile (`/mobile`) — Complete
 - 5 tabs: Deadlines (list + calendar), Cases (detail + read-only vertical timeline), Documents (own docs only, create draft with .docx upload, submit for review, status badges, download), Contacts (tap-to-call), Guidelines (PDF viewer)
@@ -145,9 +138,18 @@ Client meeting → Open file (hardcopy, parties, court case no., file ref no.)
 - `served` status semantics (email + hand/courier delivery) correct as built
 - `assigned_to` single-field is *insufficient* — see schema change below
 
+**Schema change — case brief + party role (missed on first pass, document's opening line):**
+```sql
+alter table public.case_files add column intake_brief text;
+alter table public.case_files add column party_role text check (party_role in ('plaintiff', 'defendant', 'other'));
+```
+Document's very first line: "First client meeting – get the brief facts, give initial advice (example of a case brief)" — this happens BEFORE the file is formally opened. `intake_brief` captures these facts + initial advice; shown at top of Case Detail page, editable by associate+. `party_role` captures whether the firm represents plaintiff or defendant — the document explicitly branches the workflow on this ("If we are the Plaintiff... If we act for the Defendant...") which is also why the seeded checklist is specifically "Standard Civil Suit (**Plaintiff**)" — a defendant-side case follows a different sequence (build that template in FYP II, just capture the field now). Set both fields on case create/edit form, near case_number/file_number.
+
 **Schema change — dual assignment:**
 ```sql
 alter table public.case_files add column partner_id uuid references public.users(id) on delete set null;
+alter table public.case_files add column intake_brief text;
+alter table public.case_files add column party_role text check (party_role in ('plaintiff', 'defendant', 'other'));
 ```
 Client confirmed files are assigned to BOTH a partner and an associate (partner's initials appear in the file reference number). `case_files.assigned_to` continues to represent the associate; `partner_id` is new. Update case create/edit UI to capture both.
 
@@ -363,12 +365,12 @@ POST /api/documents/:id/strip-annotations    # associate; removes annotations fr
 
 ---
 
-1. **Run new SQL**: `partner_id` column on case_files, and the 3 `final_pdf_url`/`final_pdf_name`/`filing_checks` columns on documents
+1. **Run new SQL**: `partner_id`, `intake_brief`, `party_role` columns on case_files, and the 3 `final_pdf_url`/`final_pdf_name`/`filing_checks` columns on documents
 2. **Pre-Filing Validation Checker** — schema (above), upload-filing-pdf endpoint with 3 deterministic checks, web UI checklist panel on document detail, gate on the file transition with acknowledgement override
 3. **Case Progression Checklist** — schema, backend routes, web UI on case detail, template manager, AI matching endpoint + suggestion banner; seed BOTH "Standard Civil Suit (Plaintiff)" AND "Trial Bundle Checklist" templates
 4. **Demo seed data script** — enables client review, UAT, and report screenshots; use the real arahan examples and guideline links from the Firm Operations document
 5. **Document tags** — small, client-requested
-6. **Update case create/edit UI** — capture both `assigned_to` (associate) and new `partner_id`
+6. **Update case create/edit UI** — capture `assigned_to` (associate), new `partner_id`, new `intake_brief` textarea, new `party_role` select; display intake_brief prominently at top of Case Detail page
 7. **Seed guidelines** with the 6 real URLs from the Firm Operations document
 8. **Deployment** — web → Vercel; backend → Render/Railway; AI service → Render; enables remote UAT with the firm (FYP II requires testing on identified users)
 9. **ML training + evaluation** — use the 5 client arahan examples as seed, expand via Option A/B in the ML training note above
@@ -402,7 +404,7 @@ POST /api/documents/:id/strip-annotations    # associate; removes annotations fr
 | users | All staff — 6 roles, supervisor_id for Level 1 |
 | template_categories / templates | Word file templates |
 | documents | 7-status workflow, case_id link, **tags (new)** |
-| case_files | Cases with structured storage location, **partner_id (new)** + assigned_to (associate) |
+| case_files | Cases with structured storage location, **partner_id, intake_brief, party_role (new)** + assigned_to (associate) |
 | case_history | Auto audit trail |
 | case_stages | Progression timeline (ai_parsed, confidence) |
 | **checklist_templates (new)** | Reusable matter playbooks — seed 2: "Standard Civil Suit (Plaintiff)" + "Trial Bundle Checklist" |

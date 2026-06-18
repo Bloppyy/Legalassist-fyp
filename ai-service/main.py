@@ -16,7 +16,7 @@ app = FastAPI(
 # CORS — only the Node.js backend needs to call this service
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5000"],  # Node.js backend origin
+    allow_origins=["*"],   # internal service — only the Node.js backend calls this
     allow_methods=["POST", "GET"],
     allow_headers=["Content-Type"],
 )

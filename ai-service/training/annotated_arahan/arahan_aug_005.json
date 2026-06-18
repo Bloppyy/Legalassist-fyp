@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_005",
+  "source_file": "arahan_aug_005.txt",
+  "text": "Pliding ditutup. Pengurusan kes pra bicara (Aturan 34 KKM 2012): Pihak-pihak diarahkan untuk memfailkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan. Tarikh pengurusan kes berikutnya ditetapkan pada 20.09.2026 di Mahkamah Tinggi Kuala Lumpur.",
+  "labels": {
+    "next_court_date": "2026-09-20",
+    "court_name": "Mahkamah Tinggi Kuala Lumpur",
+    "parties": [],
+    "required_actions": [
+      "Pihak-pihak diarahkan untuk memfailkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 247,
+      "end": 257,
+      "text": "20.09.2026"
+    },
+    "court_name": {
+      "start": 261,
+      "end": 289,
+      "text": "Mahkamah Tinggi Kuala Lumpur"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 65,
+        "end": 197,
+        "text": "Pihak-pihak diarahkan untuk memfailkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

@@ -128,7 +128,7 @@ async function seedGuidelines() {
       content: 'Direktori rasmi Mahkamah Kuala Lumpur — nombor telefon, alamat kaunter, dan maklumat pendaftaran.',
       registry_url: 'https://kl.kehakiman.gov.my/ms/hubungi/direktori',
       state: 'Wilayah Persekutuan Kuala Lumpur',
-      category: 'other',
+      category: 'case_management',
       order_index: 2,
     },
     {
@@ -136,7 +136,7 @@ async function seedGuidelines() {
       content: 'Direktori rasmi Mahkamah Pulau Pinang — nombor telefon, alamat, dan maklumat pendaftaran.',
       registry_url: 'https://pulaupinang.kehakiman.gov.my/ms/hubungi/direktori',
       state: 'Pulau Pinang',
-      category: 'other',
+      category: 'case_management',
       order_index: 3,
     },
     {
@@ -144,7 +144,7 @@ async function seedGuidelines() {
       content: 'Maklumat Mahkamah Tinggi Sivil Shah Alam — lokasi, kaunter pendaftaran, dan waktu operasi.',
       registry_url: 'https://selangor.kehakiman.gov.my/ms/directory/mahkamah-tinggi-sivil-shah-alam',
       state: 'Selangor',
-      category: 'other',
+      category: 'case_management',
       order_index: 4,
     },
     {

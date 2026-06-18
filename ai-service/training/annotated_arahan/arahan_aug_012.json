@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_012",
+  "source_file": "arahan_aug_012.txt",
+  "text": "Pernyataan saksi-saksi hendaklah difailkan dan diserahkan kepada pihak-pihak bertentangan sebelum atau pada 01.02.2027. Pengurusan kes seterusnya ditetapkan pada 15.02.2027 di Mahkamah Majistret Petaling Jaya untuk memastikan semua dokumen telah difailkan.",
+  "labels": {
+    "next_court_date": "2027-02-15",
+    "court_name": "Mahkamah Majistret Petaling Jaya",
+    "parties": [],
+    "required_actions": [
+      "Pernyataan saksi-saksi hendaklah difailkan dan diserahkan kepada pihak-pihak bertentangan sebelum atau pada 01.02.2027."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 162,
+      "end": 172,
+      "text": "15.02.2027"
+    },
+    "court_name": {
+      "start": 176,
+      "end": 208,
+      "text": "Mahkamah Majistret Petaling Jaya"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 0,
+        "end": 119,
+        "text": "Pernyataan saksi-saksi hendaklah difailkan dan diserahkan kepada pihak-pihak bertentangan sebelum atau pada 01.02.2027."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

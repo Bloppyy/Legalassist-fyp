@@ -1,0 +1,35 @@
+{
+  "document_id": "arahan_aug_006",
+  "source_file": "arahan_aug_006.txt",
+  "text": "Peringkat pliding ditutup. Mahkamah mengarahkan pihak-pihak untuk mengemukakan Ikatan Pliding, Ikatan Dokumen Bersama (Bahagian A, B dan C), Fakta Diakui dan Isu-isu untuk Dibicarakan sebelum atau pada 02.10.2026. Pengurusan kes ditetapkan di Mahkamah Tinggi Shah Alam pada tarikh tersebut.",
+  "labels": {
+    "next_court_date": "2026-10-02",
+    "court_name": "Mahkamah Tinggi Shah Alam",
+    "parties": [],
+    "required_actions": [
+      "Mahkamah mengarahkan pihak-pihak untuk mengemukakan Ikatan Pliding, Ikatan Dokumen Bersama (Bahagian A, B dan C), Fakta Diakui dan Isu-isu untuk Dibicarakan sebelum atau pada 02.10.2026."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 202,
+      "end": 212,
+      "text": "02.10.2026"
+    },
+    "court_name": {
+      "start": 243,
+      "end": 268,
+      "text": "Mahkamah Tinggi Shah Alam"
+    },
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 27,
+        "end": 213,
+        "text": "Mahkamah mengarahkan pihak-pihak untuk mengemukakan Ikatan Pliding, Ikatan Dokumen Bersama (Bahagian A, B dan C), Fakta Diakui dan Isu-isu untuk Dibicarakan sebelum atau pada 02.10.2026."
+      }
+    ]
+  },
+  "annotated_by": "augment_script",
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+}

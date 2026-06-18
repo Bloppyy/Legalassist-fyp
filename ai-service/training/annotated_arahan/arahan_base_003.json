@@ -1,0 +1,31 @@
+{
+  "document_id": "arahan_base_003",
+  "source_file": "arahan_base_003.txt",
+  "text": "Pliding ditutup. Pengurusan kes pra bicara (Aturan 34 kaedah 2 KKM 2012): Sila failkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan 5) Senarai Saksi. Pengurusan kes ditangguhkan ke tarikh 13.08.2026 pada masa 9:00AM untuk melengkapkan dokumen pra perbicaraan.",
+  "labels": {
+    "next_court_date": "2026-08-13",
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      "Sila failkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan 5) Senarai Saksi."
+    ]
+  },
+  "spans": {
+    "next_court_date": {
+      "start": 236,
+      "end": 246,
+      "text": "13.08.2026"
+    },
+    "court_name": null,
+    "parties": [],
+    "required_actions": [
+      {
+        "start": 74,
+        "end": 197,
+        "text": "Sila failkan: 1) Ikatan Pliding 2) Ikatan Dokumen 3) Fakta-fakta yang Diakui 4) Isu-isu untuk Dibicarakan 5) Senarai Saksi."
+      }
+    ]
+  },
+  "annotated_by": "seed_script",
+  "annotated_at": "2026-06-18T06:39:11.920002+00:00"
+}
