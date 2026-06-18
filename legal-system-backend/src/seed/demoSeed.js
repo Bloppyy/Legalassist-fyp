@@ -1,10 +1,11 @@
 require('dotenv').config();
 const supabase = require('../config/supabase');
 
-const ADMIN_ID     = '13f635ac-1415-42a2-b03b-b487eecb12a6';
-const ASSOCIATE_ID = '15970048-141f-41dd-b977-30e316493099';
-const PARTNER_ID   = '3087b473-0177-4849-9486-2e6c1c8c1097';
-let   TEMPLATE_ID  = null; // resolved at runtime from checklist_templates by name
+// All user IDs resolved at runtime by role — never hardcode real UUIDs in source
+let ADMIN_ID     = null;
+let ASSOCIATE_ID = null;
+let PARTNER_ID   = null;
+let TEMPLATE_ID  = null;
 
 function daysAgo(n) {
   const d = new Date();
@@ -20,6 +21,21 @@ function daysFromNow(n) {
 
 function dateOnly(iso) {
   return iso.split('T')[0];
+}
+
+// ── User resolution ───────────────────────────────────────────────────────────
+
+async function resolveUsers() {
+  const pick = async (role) => {
+    const { data, error } = await supabase
+      .from('users').select('id').eq('role', role).limit(1).maybeSingle();
+    if (error || !data) throw new Error(`No user with role '${role}' found — seed the users table first`);
+    return data.id;
+  };
+  ADMIN_ID     = await pick('admin');
+  ASSOCIATE_ID = await pick('associate');
+  PARTNER_ID   = await pick('partner');
+  console.log(`Resolved users — admin: ${ADMIN_ID.slice(0,8)}… associate: ${ASSOCIATE_ID.slice(0,8)}… partner: ${PARTNER_ID.slice(0,8)}…`);
 }
 
 // ── Cleanup ──────────────────────────────────────────────────────────────────
@@ -95,7 +111,7 @@ async function seedContacts() {
       name: 'DEMO: Cik Priya Ramasamy',
       job_title: 'Court Interpreter (BM / EN / Tamil)',
       phone: '016-7654321',
-      email: 'priya.interpreter@gmail.com',
+      email: 'priya.interpreter@example.com',
       state: 'Wilayah Persekutuan Kuala Lumpur',
       notes: 'Freelance. 48-hour notice preferred. Fluent in Bahasa Malaysia, English, and Tamil.',
     },
@@ -104,7 +120,7 @@ async function seedContacts() {
       job_title: 'Legal Courier',
       phone: '1300-88-8899',
       state: 'Selangor',
-      notes: 'Account no. GDX-L09934. Same-day delivery before 2pm cutoff.',
+      notes: 'Account no. GDX-DEMO-0000. Same-day delivery before 2pm cutoff.',
     },
   ], 'contacts');
   console.log('  4 contacts created.');
@@ -591,6 +607,7 @@ async function main() {
     TEMPLATE_ID = tpl.id;
     console.log(`Using checklist template: ${TEMPLATE_ID}\n`);
 
+    await resolveUsers();
     await cleanup();
     await seedContacts();
     await seedGuidelines();
