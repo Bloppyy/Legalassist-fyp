@@ -80,6 +80,7 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [aiParsed, setAiParsed] = useState(false);
+  const [aiConfidence, setAiConfidence] = useState(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -102,12 +103,13 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
 
   useEffect(() => { load(); }, [caseId]);
 
-  const closeForm = () => { setShowForm(false); setFormError(''); };
+  const closeForm = () => { setShowForm(false); setFormError(''); setAiConfidence(null); };
 
   const openAddManual = () => {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, stage_date: today() });
     setAiParsed(false);
+    setAiConfidence(null);
     setFormError('');
     setShowForm(true);
   };
@@ -125,6 +127,7 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
       direction_source: stage.direction_source ?? '',
     });
     setAiParsed(stage.ai_parsed ?? false);
+    setAiConfidence(null);
     setFormError('');
     setShowForm(true);
   };
@@ -150,15 +153,17 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
         await updateCaseStage(editingId, payload);
       } else {
         const res = await createCaseStage(payload);
+        // Fire-and-forget: do not await — AI cold start must not block form close
         if (form.stage_type === 'court_direction' && form.directions && onDirectionSaved) {
           const stageId = res.data.data?.id;
           const actions = form.directions.split('\n').map(s => s.trim()).filter(Boolean);
           if (stageId && actions.length > 0) {
-            try {
-              const matchRes = await matchDirection(caseId, actions);
-              const matchData = matchRes.data.data;
-              if (matchData?.has_suggestions) onDirectionSaved(matchData.matches, stageId);
-            } catch { /* AI service unavailable — silently ignore */ }
+            matchDirection(caseId, actions)
+              .then(matchRes => {
+                const matchData = matchRes.data.data;
+                if (matchData?.has_suggestions) onDirectionSaved(matchData.matches, stageId);
+              })
+              .catch(() => {});
           }
         }
       }
@@ -213,6 +218,7 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
         direction_source: 'physical',
       });
       setAiParsed(true);
+      setAiConfidence(parsed.confidence ?? null);
       setEditingId(null);
       setFormError('');
       setShowUpload(false);
@@ -251,7 +257,11 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 {editingId ? 'Edit Stage' : 'Add Stage'}
-                {aiParsed && <span className={styles.aiBadge}>AI Pre-filled</span>}
+                {aiParsed && (
+                  <span className={styles.aiBadge}>
+                    AI Pre-filled{aiConfidence != null ? ` · ${Math.round(aiConfidence * 100)}% confidence` : ''}
+                  </span>
+                )}
               </h4>
               <button onClick={closeForm} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: 'var(--color-text-muted)', padding: '0 4px' }}>×</button>
             </div>

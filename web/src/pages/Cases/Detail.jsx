@@ -99,7 +99,7 @@ export default function CaseDetail() {
   };
 
   const handleDirectionSaved = (matches, stageId) => {
-    const valid = matches.filter(m => m.is_match && m.matched_item_id);
+    const valid = matches.filter(m => m.matched_item_id);
     if (valid.length === 0) return;
     // deduplicate by matched_item_id (same item can match multiple actions)
     const seen = new Set();
