@@ -12,3 +12,5 @@ export const parseDirection         = (caseId, formData) =>
   api.post(`/case-stages/${caseId}/parse-direction`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+export const parseDirectionText     = (caseId, text) =>
+  api.post(`/case-stages/${caseId}/parse-direction`, { text });
