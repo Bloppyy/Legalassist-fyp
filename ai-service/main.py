@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import checklist, classification, compliance, court_directions, entities, evaluation, templates
+from services.ml_models import get_sentence_model
+from services.direction_parser import _load_nlp
 
 app = FastAPI(
     title="LegalAssist AI Service",
@@ -31,6 +33,14 @@ app.include_router(evaluation.router)
 app.include_router(checklist.router)
 
 
+@app.on_event("startup")
+def preload_models():
+    """Eagerly load heavy models at startup so the first real request is fast."""
+    _load_nlp()
+    get_sentence_model()
+
+
 @app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok", "service": "LegalAssist AI Service"}
+    model_ready = get_sentence_model() is not None
+    return {"status": "ok", "service": "LegalAssist AI Service", "model_ready": model_ready}
