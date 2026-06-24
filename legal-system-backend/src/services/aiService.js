@@ -2,22 +2,34 @@ require('dotenv').config();
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
+const AI_TIMEOUT_MS = 90_000; // 90s — covers Render free-tier cold start (~60s)
+
 /**
- * Internal helper — POST to the Python FastAPI AI service.
+ * Internal helper — POST to the Python FastAPI AI service with a hard timeout.
  */
 const post = async (path, body) => {
-  const response = await fetch(`${AI_SERVICE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`AI service error (${response.status}): ${text}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${AI_SERVICE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`AI service error (${response.status}): ${text}`);
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('AI service timed out — it may be warming up. Please try again in 30 seconds.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-
-  return response.json();
 };
 
 /**
@@ -91,15 +103,7 @@ const evaluateParser = async (text, groundTruth) => {
  * @returns {AggregateEvaluationResponse}
  */
 const runBatchEvaluation = async () => {
-  const response = await fetch(`${AI_SERVICE_URL}/evaluate-parser/run-batch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`AI service error (${response.status}): ${text}`);
-  }
-  return response.json();
+  return post('/evaluate-parser/run-batch', {});
 };
 
 /**
@@ -107,12 +111,25 @@ const runBatchEvaluation = async () => {
  * @returns {AggregateEvaluationResponse}
  */
 const getAggregateEvaluation = async () => {
-  const response = await fetch(`${AI_SERVICE_URL}/evaluate-parser/aggregate`);
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`AI service error (${response.status}): ${text}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${AI_SERVICE_URL}/evaluate-parser/aggregate`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`AI service error (${response.status}): ${text}`);
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('AI service timed out — it may be warming up. Please try again in 30 seconds.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return response.json();
 };
 
 /**

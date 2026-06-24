@@ -224,7 +224,11 @@ export default function CaseTimeline({ caseId, canWrite, onDirectionSaved }) {
       setShowUpload(false);
       setShowForm(true);
     } catch (err) {
-      setParseError(err.response?.data?.message ?? 'Parsing failed — check the AI service is running');
+      const msg = err.response?.data?.message ?? err.message ?? '';
+      const isTimeout = msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('warming up') || err.code === 'ECONNABORTED';
+      setParseError(isTimeout
+        ? 'AI service is warming up (Render free tier). Wait 30 seconds then try again.'
+        : `Parsing failed — ${msg || 'check the AI service is running'}`);
     } finally { setParsing(false); }
   };
 
