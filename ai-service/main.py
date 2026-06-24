@@ -1,3 +1,5 @@
+import threading
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,14 +35,27 @@ app.include_router(evaluation.router)
 app.include_router(checklist.router)
 
 
-@app.on_event("startup")
-def preload_models():
-    """Eagerly load heavy models at startup so the first real request is fast."""
-    _load_nlp()
-    get_sentence_model()
+def _preload_models():
+    """Load heavy models in a background thread — port binds immediately, models warm up concurrently."""
+    try:
+        _load_nlp()
+        get_sentence_model()
+        print("[startup] Models ready.")
+    except Exception as e:
+        print(f"[startup] Model preload failed: {e}")
+
+
+# Start background model loading the moment the module is imported.
+# This means uvicorn binds its port straight away (Render detects it),
+# while models load in parallel over the next 30–60 seconds.
+threading.Thread(target=_preload_models, daemon=True).start()
 
 
 @app.get("/", tags=["Health"])
 def health_check():
     model_ready = get_sentence_model() is not None
-    return {"status": "ok", "service": "LegalAssist AI Service", "model_ready": model_ready}
+    return {
+        "status": "ok" if model_ready else "warming_up",
+        "service": "LegalAssist AI Service",
+        "model_ready": model_ready,
+    }
