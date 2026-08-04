@@ -373,6 +373,12 @@ const markFiled = async (req, res, next) => {
       return next(createError(400, 'Upload and validate the court-ready PDF before marking as filed'));
     }
 
+    const checks = doc.filing_checks;
+    const hasIssues = checks && (!checks.size_ok || !checks.copyable_ok || !checks.annotations_ok);
+    if (hasIssues && !req.body.acknowledge_issues) {
+      return next(createError(400, 'Pre-filing checks have failed. Acknowledge the issues before filing.'));
+    }
+
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('documents')
@@ -385,8 +391,6 @@ const markFiled = async (req, res, next) => {
     await notifyDocumentStatus(doc.created_by, doc.id, doc.title, 'filed');
 
     if (doc.case_id) {
-      const checks = doc.filing_checks;
-      const hasIssues = checks && (!checks.size_ok || !checks.copyable_ok || !checks.annotations_ok);
       await supabase.from('case_history').insert({
         case_id: doc.case_id,
         action: 'Document filed',
