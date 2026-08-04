@@ -109,7 +109,7 @@ export default function DocumentDetail() {
 
   const handleFile = async () => {
     setActionError('');
-    try { await fileDocument(id); load(); }
+    try { await fileDocument(id, { acknowledge_issues: filingAcknowledged }); load(); }
     catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
   };
 

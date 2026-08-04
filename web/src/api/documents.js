@@ -13,7 +13,7 @@ export const submitDocument    = (id) => api.patch(`/documents/${id}/submit`);
 export const escalateDocument  = (id, data) => api.patch(`/documents/${id}/escalate`, data);
 export const approveDocument   = (id) => api.patch(`/documents/${id}/approve`);
 export const rejectDocument    = (id, data) => api.patch(`/documents/${id}/reject`, data);
-export const fileDocument      = (id) => api.patch(`/documents/${id}/file`);
+export const fileDocument      = (id, data) => api.patch(`/documents/${id}/file`, data);
 export const serveDocument     = (id) => api.patch(`/documents/${id}/serve`);
 
 // AI
