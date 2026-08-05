@@ -81,22 +81,10 @@ def _confidence_from_entities(
     return round(min(score, 1.0), 2)
 
 
-def predict(text: str) -> Optional[DirectionParseResponse]:
-    """
-    Run the fine-tuned NER model on text.
-    Returns a DirectionParseResponse (parser_used='ml'), or None if the model
-    is not available — signals caller to use rule-based fallback.
-    """
-    ner = _load_pipeline()
-    if ner is None:
-        return None
-
-    try:
-        entities = ner(text)
-    except Exception as e:
-        print(f"[ml_parser] Inference error: {e}")
-        return None
-
+def _entities_to_response(entities: list[dict]) -> DirectionParseResponse:
+    """Pure conversion: raw NER pipeline output -> structured fields.
+    Shared by production predict() and the CV harness so both measure
+    identical post-processing, not two independently-written versions."""
     next_court_date: Optional[str] = None
     court_name: Optional[str] = None
     parties: list[str] = []
@@ -105,9 +93,7 @@ def predict(text: str) -> Optional[DirectionParseResponse]:
     seen_actions: set[str] = set()
 
     for ent in entities:
-        # entity_group is the label (e.g. "NEXT_COURT_DATE")
         label = ent.get("entity_group") or ent.get("entity", "")
-        # Strip B- / I- prefixes if aggregation didn't happen
         for prefix in ("B-", "I-"):
             if label.startswith(prefix):
                 label = label[len(prefix):]
@@ -117,16 +103,13 @@ def predict(text: str) -> Optional[DirectionParseResponse]:
             parsed = _parse_date(span_text)
             if parsed:
                 next_court_date = parsed
-
         elif label == "COURT_NAME" and court_name is None:
             court_name = span_text
-
         elif label == "PARTY":
             key = span_text.lower()
             if key not in seen_parties and len(span_text) > 2:
                 parties.append(span_text)
                 seen_parties.add(key)
-
         elif label == "REQUIRED_ACTION":
             key = span_text.lower()
             if key not in seen_actions and len(span_text) > 10:
@@ -134,20 +117,40 @@ def predict(text: str) -> Optional[DirectionParseResponse]:
                 seen_actions.add(key)
 
     confidence = _confidence_from_entities(
-        has_date=next_court_date is not None,
-        has_court=court_name is not None,
-        party_count=len(parties),
-        action_count=len(required_actions),
+        has_date=next_court_date is not None, has_court=court_name is not None,
+        party_count=len(parties), action_count=len(required_actions),
     )
-
     return DirectionParseResponse(
-        next_court_date=next_court_date,
-        required_actions=required_actions[:10],
-        parties=parties[:10],
-        court_name=court_name,
-        confidence=confidence,
+        next_court_date=next_court_date, required_actions=required_actions[:10],
+        parties=parties[:10], court_name=court_name, confidence=confidence,
         parser_used="ml",
     )
+
+
+def predict(text: str) -> Optional[DirectionParseResponse]:
+    """Production entry point — behavior unchanged."""
+    ner = _load_pipeline()
+    if ner is None:
+        return None
+    try:
+        entities = ner(text)
+    except Exception as e:
+        print(f"[ml_parser] Inference error: {e}")
+        return None
+    return _entities_to_response(entities)
+
+
+def predict_with_pipeline(text: str, ner_pipeline) -> Optional[DirectionParseResponse]:
+    """Same conversion as predict(), against an arbitrary already-loaded
+    pipeline instead of the cached model-best/ singleton. Needed because
+    @lru_cache on _load_pipeline() means predict() can only ever serve one
+    fixed model — the CV harness needs a different model per fold."""
+    try:
+        entities = ner_pipeline(text)
+    except Exception as e:
+        print(f"[ml_parser] CV inference error: {e}")
+        return None
+    return _entities_to_response(entities)
 
 
 def is_available() -> bool:

@@ -98,6 +98,21 @@ def _overall_f1(fields: dict[str, FieldMetrics]) -> float:
     return round(sum(f1s) / len(f1s), 4) if f1s else 0.0
 
 
+def _aggregate(acc: dict[str, list[tuple[float, float, float]]]) -> dict[str, AggregateFieldMetrics]:
+    result = {}
+    for field, vals in acc.items():
+        if not vals:
+            result[field] = AggregateFieldMetrics(precision=0.0, recall=0.0, f1=0.0, support=0)
+        else:
+            result[field] = AggregateFieldMetrics(
+                precision=round(sum(v[0] for v in vals) / len(vals), 4),
+                recall=round(sum(v[1] for v in vals) / len(vals), 4),
+                f1=round(sum(v[2] for v in vals) / len(vals), 4),
+                support=len(vals),
+            )
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Single-document evaluation
 # ---------------------------------------------------------------------------
@@ -184,20 +199,6 @@ def _run_batch_evaluation() -> dict:
                     ml_acc[field].append((metrics.precision, metrics.recall, metrics.f1))
 
         processed += 1
-
-    def _aggregate(acc: dict[str, list[tuple[float, float, float]]]) -> dict[str, AggregateFieldMetrics]:
-        result = {}
-        for field, vals in acc.items():
-            if not vals:
-                result[field] = AggregateFieldMetrics(precision=0.0, recall=0.0, f1=0.0, support=0)
-            else:
-                result[field] = AggregateFieldMetrics(
-                    precision=round(sum(v[0] for v in vals) / len(vals), 4),
-                    recall=round(sum(v[1] for v in vals) / len(vals), 4),
-                    f1=round(sum(v[2] for v in vals) / len(vals), 4),
-                    support=len(vals),
-                )
-        return result
 
     rb_agg   = _aggregate(rb_acc)
     macro_rb = round(sum(m.f1 for m in rb_agg.values()) / len(rb_agg), 4) if rb_agg else 0.0

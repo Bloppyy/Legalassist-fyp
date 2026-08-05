@@ -206,10 +206,63 @@ def evaluate_model(model, tokenizer, data: list[dict]) -> float:
 # Training
 # ---------------------------------------------------------------------------
 
-def train(epochs: int):
+def run_training(train_data: list[dict], dev_data: list[dict], output_dir: Path,
+                 epochs: int, save_last: bool = False,
+                 last_dir: Path | None = None, verbose: bool = True) -> float:
+    """Core training loop, extracted from train() so both the plain CLI
+    trainer and the CV harness call the identical code path. Returns
+    best dev F1. Saves best checkpoint to output_dir as training progresses;
+    optionally also saves the final epoch to last_dir when save_last=True
+    (only train() below sets this — CV folds don't need a 'last' checkpoint)."""
     import torch
     from transformers import AutoTokenizer, AutoModelForTokenClassification
 
+    tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL)
+    model = AutoModelForTokenClassification.from_pretrained(
+        TRANSFORMER_MODEL, num_labels=len(LABELS),
+        id2label=ID2LABEL, label2id=LABEL2ID, ignore_mismatched_sizes=True,
+    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+    best_f1 = -1.0
+
+    for epoch in range(1, epochs + 1):
+        model.train()
+        random.shuffle(train_data)
+        epoch_loss = 0.0
+        for ann in train_data:
+            enc = tokenize_and_align(tokenizer, ann["text"], get_char_spans(ann))
+            labels = torch.tensor([enc.pop("labels")])
+            inputs = {k: torch.tensor([v]) for k, v in enc.items()}
+            outputs = model(**inputs, labels=labels)
+            loss = outputs.loss
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(train_data)
+        f1 = evaluate_model(model, tokenizer, dev_data)
+        if verbose:
+            flag = "  <-- best" if f1 > best_f1 else ""
+            print(f"Epoch {epoch:>3}/{epochs}  loss={avg_loss:>7.4f}  dev_F1={f1:.3f}{flag}")
+
+        if f1 > best_f1:
+            best_f1 = f1
+            output_dir.mkdir(parents=True, exist_ok=True)
+            model.save_pretrained(output_dir)
+            tokenizer.save_pretrained(output_dir)
+
+    if save_last and last_dir is not None:
+        last_dir.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(last_dir)
+        tokenizer.save_pretrained(last_dir)
+
+    return best_f1
+
+
+def train(epochs: int):
+    """Unchanged behavior — now delegates the loop to run_training()."""
     annotations = load_annotations()
     if len(annotations) < 2:
         sys.exit(
@@ -227,53 +280,8 @@ def train(epochs: int):
     print(f"Epochs      : {epochs}\n")
     print("Downloading / loading tokenizer + model weights...")
 
-    tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL)
-    model = AutoModelForTokenClassification.from_pretrained(
-        TRANSFORMER_MODEL,
-        num_labels=len(LABELS),
-        id2label=ID2LABEL,
-        label2id=LABEL2ID,
-        ignore_mismatched_sizes=True,
-    )
-
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
-
-    best_f1 = -1.0
-    print("-" * 60)
-
-    for epoch in range(1, epochs + 1):
-        model.train()
-        random.shuffle(train_data)
-        epoch_loss = 0.0
-
-        for ann in train_data:
-            enc = tokenize_and_align(tokenizer, ann["text"], get_char_spans(ann))
-            labels = torch.tensor([enc.pop("labels")])
-            inputs = {k: torch.tensor([v]) for k, v in enc.items()}
-
-            outputs = model(**inputs, labels=labels)
-            loss = outputs.loss
-
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            epoch_loss += loss.item()
-
-        avg_loss = epoch_loss / len(train_data)
-        f1 = evaluate_model(model, tokenizer, dev_data)
-        flag = "  <-- best" if f1 > best_f1 else ""
-        print(f"Epoch {epoch:>3}/{epochs}  loss={avg_loss:>7.4f}  dev_F1={f1:.3f}{flag}")
-
-        if f1 > best_f1:
-            best_f1 = f1
-            MODEL_BEST.mkdir(parents=True, exist_ok=True)
-            model.save_pretrained(MODEL_BEST)
-            tokenizer.save_pretrained(MODEL_BEST)
-
-    MODEL_LAST.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(MODEL_LAST)
-    tokenizer.save_pretrained(MODEL_LAST)
+    best_f1 = run_training(train_data, dev_data, MODEL_BEST, epochs,
+                           save_last=True, last_dir=MODEL_LAST)
 
     print("-" * 60)
     print(f"Training complete.  Best dev F1: {best_f1:.3f}")

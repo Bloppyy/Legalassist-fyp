@@ -31,5 +31,8 @@
     ]
   },
   "annotated_by": "augment_script",
-  "annotated_at": "2026-06-18T06:41:19.288063+00:00"
+  "annotated_at": "2026-06-18T06:41:19.288063+00:00",
+  "source_id": null,
+  "group_id": null,
+  "cv_excluded": true
 }
