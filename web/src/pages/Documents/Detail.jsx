@@ -4,7 +4,7 @@ import {
   getDocument, updateDocument, submitDocument, escalateDocument,
   approveDocument, rejectDocument, fileDocument, serveDocument,
   downloadDocument, reuploadDocument, checkCompliance, checkSimilarity, extractEntities,
-  uploadFilingPdf, stripAnnotationsDoc,
+  uploadFilingPdf, stripAnnotationsDoc, applyOcrTextLayer,
 } from '../../api/documents';
 import { useAuth } from '../../context/AuthContext';
 import { STATUS_COLORS } from '../../constants/colors';
@@ -41,6 +41,7 @@ export default function DocumentDetail() {
   const [filingChecks, setFilingChecks] = useState(null);
   const [filingAcknowledged, setFilingAcknowledged] = useState(false);
   const [strippingAnnotations, setStrippingAnnotations] = useState(false);
+  const [applyingOcr, setApplyingOcr] = useState(false);
   const reuploadRef = useRef();
   const filingPdfRef = useRef();
 
@@ -154,9 +155,21 @@ export default function DocumentDetail() {
     try {
       const res = await stripAnnotationsDoc(id);
       setFilingChecks(res.data.data.filing_checks);
+      setFilingAcknowledged(false);
     } catch (err) {
       setActionError(err.response?.data?.message ?? 'Strip failed');
     } finally { setStrippingAnnotations(false); }
+  };
+
+  const handleApplyOcr = async () => {
+    setApplyingOcr(true); setActionError('');
+    try {
+      const res = await applyOcrTextLayer(id);
+      setFilingChecks(res.data.data.filing_checks);
+      setFilingAcknowledged(false);
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'OCR failed');
+    } finally { setApplyingOcr(false); }
   };
 
   const handleExtractEntities = async () => {
@@ -297,6 +310,8 @@ export default function DocumentDetail() {
           handleUploadFilingPdf={handleUploadFilingPdf}
           strippingAnnotations={strippingAnnotations}
           handleStripAnnotations={handleStripAnnotations}
+          applyingOcr={applyingOcr}
+          handleApplyOcr={handleApplyOcr}
           filingAcknowledged={filingAcknowledged}
           setFilingAcknowledged={setFilingAcknowledged}
           handleFile={handleFile}
@@ -485,6 +500,7 @@ function FilingPanel({
   doc, filingChecks, filingPdfFile, setFilingPdfFile, filingPdfRef,
   uploadingFilingPdf, handleUploadFilingPdf,
   strippingAnnotations, handleStripAnnotations,
+  applyingOcr, handleApplyOcr,
   filingAcknowledged, setFilingAcknowledged,
   handleFile, styles,
 }) {
@@ -530,6 +546,11 @@ function FilingPanel({
             <span className={styles.filingCheckValue}>
               {checks.copyable_ok ? 'Text-extractable' : 'Scanned / image PDF — not copyable'}
             </span>
+            {!checks.copyable_ok && (
+              <button className={styles.filingFixBtn} onClick={handleApplyOcr} disabled={applyingOcr}>
+                {applyingOcr ? 'Running OCR…' : 'Fix with OCR'}
+              </button>
+            )}
           </div>
 
           <div className={styles.filingCheckRow}>

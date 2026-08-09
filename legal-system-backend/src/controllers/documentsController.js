@@ -586,6 +586,53 @@ const stripAnnotationsPdf = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+/**
+ * POST /api/documents/:id/apply-ocr
+ * Associate runs OCR on the stored filing PDF to add a searchable text layer.
+ * Overwrites the same path, re-runs all 3 filing checks, logs to case_history.
+ */
+const applyOcrTextLayer = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    if (!doc.final_pdf_url) return next(createError(400, 'No filing PDF uploaded yet'));
+
+    const { data: fileBlob, error: dlErr } = await supabase.storage
+      .from(BUCKET)
+      .download(doc.final_pdf_url);
+    if (dlErr) throw new Error(`Could not download filing PDF: ${dlErr.message}`);
+
+    const original = Buffer.from(await fileBlob.arrayBuffer());
+    const ocrResult = await aiService.applyOcrTextLayer(original, doc.final_pdf_name);
+
+    await uploadFile(BUCKET, doc.final_pdf_url, ocrResult, 'application/pdf');
+    const checks = await validateFilingPdf(ocrResult);
+
+    const { data, error } = await supabase
+      .from('documents')
+      .update({ filing_checks: checks, updated_at: new Date().toISOString() })
+      .eq('id', doc.id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    if (doc.case_id) {
+      await supabase.from('case_history').insert({
+        case_id: doc.case_id,
+        action: 'OCR text layer applied to filing PDF',
+        performed_by: req.user.id,
+        notes: `"${doc.title}" re-validated — copyable: ${checks.copyable_ok}`,
+      });
+    }
+
+    return sendSuccess(res, { document: data, filing_checks: checks }, 'Text layer added — filing checks re-run');
+  } catch (err) {
+    if (err.message?.includes('OCR service error')) {
+      return next(createError(503, 'OCR service is unavailable or timed out'));
+    }
+    next(err);
+  }
+};
+
 const classifyDocument = async (req, res, next) => {
   try {
     const doc = await fetchDocument(req.params.id);
@@ -605,5 +652,5 @@ const classifyDocument = async (req, res, next) => {
 module.exports = {
   getAll, getOne, create, update, reupload, download, remove,
   submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities, classifyDocument,
-  uploadFilingPdf, stripAnnotationsPdf,
+  uploadFilingPdf, stripAnnotationsPdf, applyOcrTextLayer,
 };

@@ -3,7 +3,7 @@ import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import checklist, classification, compliance, court_directions, entities, evaluation, templates
+from routers import checklist, classification, compliance, court_directions, entities, evaluation, ocr, templates
 from services.ml_models import get_sentence_model
 from services.direction_parser import _load_nlp
 
@@ -33,6 +33,7 @@ app.include_router(court_directions.router)
 app.include_router(classification.router)
 app.include_router(evaluation.router)
 app.include_router(checklist.router)
+app.include_router(ocr.router)
 
 
 def _preload_models():

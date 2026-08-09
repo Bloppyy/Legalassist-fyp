@@ -236,10 +236,19 @@ When the annotation check fails, show a "Remove Annotations" button next to that
 - UI refreshes the checklist row to show pass immediately
 - Safe operation — annotations are metadata layered on top of the page, removing them does not alter the rendered/visual content of the document
 
-### Deferred to FYP II (do NOT build yet — noted here for continuity)
-Two further auto-fix capabilities were discussed and intentionally deferred to FYP II, where the full system is evaluated again and there is more runway:
-- **OCR text-layer fix** for the "PDF copyable" check — when a PDF is flagged as a scanned/flattened image, run OCR (e.g. ocrmypdf/Tesseract in the Python AI service) to overlay an invisible text layer, making it copyable without changing the visible page. Natural fit for the AI service since it's already Python-based. Caveat to note in report if built: OCR text layer may contain occasional misreads since OCR isn't perfect, though the visible page is unchanged.
-- **Auto-compression fix** for the size check — downsampling images / stripping duplicate font data (e.g. via Ghostscript or pikepdf) to bring oversized PDFs under 50MB. Deferred due to (a) hosting/infrastructure complexity of running Ghostscript on Render, and (b) risk of degrading scanned exhibit/signature quality below usable for actual court submission. For FYP I, oversized files remain flagged only — associate manually resolves.
+### OCR Text-Layer Fix (BUILT — FYP II deferral lifted)
+The OCR fix was originally deferred but has been implemented in FYP II:
+- **ai-service/Dockerfile** — Docker-based deploy replacing Python buildpack; installs `tesseract-ocr`, `tesseract-ocr-msa` (Malay), `ghostscript` as system binaries
+- **ai-service/routers/ocr.py** — `POST /ocr/add-text-layer`; uses `ocrmypdf --skip-text --language eng+msa`; adds invisible text layer, never alters the visible page
+- **legal-system-backend routes** — `POST /api/documents/:id/apply-ocr` (associate-only); downloads stored PDF, sends to AI service, overwrites, re-validates, logs to case_history
+- **web Detail.jsx** — "Fix with OCR" button next to the PDF Copyable row; resets `filingAcknowledged` after success (same rule as annotation-strip: any handler producing new filing_checks must reset acknowledgement)
+- **render.yaml** — AI service block changed to `runtime: docker` / `dockerfilePath: ./Dockerfile`; `PYTHON_VERSION` env var removed (Python version now in Dockerfile FROM line)
+- **ai-service/.dockerignore** — excludes `training/model-best/` and `training/model-last/` from build context; on Render this is moot (gitignored = not in repo), but prevents 5GB local context bloat
+
+Caveat to note in report: OCR text layer may contain occasional misreads — Tesseract accuracy on Malaysian BM/EN mixed text is high but not perfect. The visible page is unchanged; only the searchable/copyable layer is affected.
+
+### Deferred to FYP II — Auto-compression (still deferred)
+- **Auto-compression fix** for the size check — downsampling images / stripping duplicate font data (e.g. via Ghostscript or pikepdf) to bring oversized PDFs under 50MB. Remains deferred due to risk of degrading scanned exhibit/signature quality below usable for actual court submission. Oversized files remain flagged only — associate manually resolves.
 
 ---
 
@@ -440,6 +449,8 @@ All redacted: [NAME], [IC_NUMBER], [ADDRESS].
 **Mobile:** `cd mobile && flutter run` (base URL hardcoded to http://10.0.2.2:5000/api)
 
 **Env vars:** Backend `.env` needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, AI_SERVICE_URL (default http://localhost:8000). Web uses Supabase anon key. AI service needs none.
+
+
 
 ## Out of Scope
 - Attendance/leave, real-time collaborative editing, e-Court integration, multi-firm portal, billing, full BM/EN UI, firm website, case summary AI (client confirmed: tak perlu), LLM chatbot

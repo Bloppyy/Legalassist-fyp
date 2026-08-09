@@ -142,6 +142,30 @@ const matchChecklistItems = async (required_actions, checklist_items) => {
   return post('/checklist/match', { required_actions, checklist_items });
 };
 
+/**
+ * Add an invisible OCR text layer to a scanned/image-only PDF.
+ * Tesseract + Ghostscript run server-side; the visible page is unchanged.
+ * @param {Buffer} pdfBuffer - Raw PDF bytes
+ * @param {string} filename - Original filename (used as form field name)
+ * @returns {Buffer} - PDF bytes with text layer added
+ */
+const applyOcrTextLayer = async (pdfBuffer, filename) => {
+  const form = new FormData();
+  form.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), filename);
+
+  const res = await fetch(`${AI_SERVICE_URL}/ocr/add-text-layer`, {
+    method: 'POST',
+    body: form,
+    // OCR is slower than other AI calls — 120s not 90s. Render free-tier CPU
+    // has no GPU; a multi-page scan can genuinely take a while. If this times
+    // out in practice, that is real signal about viability on the free tier,
+    // not a bug to fix by silently raising the timeout further.
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) throw new Error(`OCR service error: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+};
+
 module.exports = {
   checkCompliance,
   extractEntities,
@@ -153,4 +177,5 @@ module.exports = {
   runBatchEvaluation,
   getAggregateEvaluation,
   matchChecklistItems,
+  applyOcrTextLayer,
 };

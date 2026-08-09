@@ -97,5 +97,6 @@ router.post('/:id/classify', documentsController.classifyDocument);
 // Pre-filing validation
 router.post('/:id/upload-filing-pdf', authorize('associate'), uploadPdf.single('file'), documentsController.uploadFilingPdf);
 router.post('/:id/strip-annotations', authorize('associate'), documentsController.stripAnnotationsPdf);
+router.post('/:id/apply-ocr', authorize('associate'), documentsController.applyOcrTextLayer);
 
 module.exports = router;
