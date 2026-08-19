@@ -8,13 +8,13 @@ Two frontends: a full-featured **React web app** and a lighter **Flutter mobile 
 Shared **Node.js + Express backend API** consumed by both frontends.
 Target users: law firm interns, junior associates, chambering students, associates, partners, and the office manager (admin).
 
-**FYP phase note:** currently in FYP I (target ~80% system completion for presentation). FYP II follows in ~2 months with full re-evaluation — features explicitly marked "Deferred to FYP II" below should not be built now.
+**FYP phase note:** currently in **FYP II** — system is fully deployed (web → Vercel, backend → Render, AI service → Render Docker). All FYP I features are complete. ML training is done. Remaining work: FCM push notifications, PDF auto-compression, UAT with firm users, report writing, compliance ML evaluation (needs more client documents).
 
-**AI Features (4 total):**
-1. **Court Direction Parser** — extracts next court date, required actions, parties, court name from arahan (file upload or camera OCR). Rule-based spaCy working; ML infrastructure complete, model training pending client documents.
+**AI Features (4 total — all DONE):**
+1. **Court Direction Parser** — BERT NER pipeline (HuggingFace), trained on 17 annotated arahan (5 base + 12 synthetic augmentations). LOGOCV macro F1: ML 0.750 vs rule-based 0.461 (N=15, no leakage). Rule-based spaCy fallback when model absent. Both file upload and mobile OCR text paths working.
 2. **Document Compliance Checker** — rule-based section check + sentence transformer per-section similarity scoring (both working, shown on document detail page).
-3. **Document Auto-Classification** — POST /classify working (sentence transformer vs template embeddings); not yet wired to frontend upload flow.
-4. **Checklist Item Matching (NEW)** — when an arahan is parsed, semantically match its required actions against pending case checklist items and suggest which to mark done / which is next. Reuses the shared sentence transformer.
+3. **Document Auto-Classification** — POST /classify wired into web upload flow; auto-selects document type at ≥0.8 confidence.
+4. **Checklist Item Matching** — POST /checklist/match on FastAPI; shared sentence transformer singleton; suggestion banner in Case Detail after arahan is parsed. User always confirms — never auto-ticks.
 
 **Research Question:**
 *Does a fine-tuned transformer model outperform a rule-based NLP approach for extracting structured information from Malaysian civil litigation court directions?*
@@ -78,29 +78,32 @@ canWrite in frontend = ['associate', 'partner', 'admin']
 - Camera OCR scanner: scan FAB on all non-documents tabs → ML Kit on-device text extraction → "Parse as Arahan" (case picker → parse-direction → pre-filled stage form) or "Use as Document Text"
 - Base URL: http://10.0.2.2:5000/api
 
-### AI Service (`/ai-service`) — Complete (model training pending)
+### AI Service (`/ai-service`) — Complete (ML trained)
 - POST /parse-direction — tries ml_parser first, falls back to rule-based; returns parser_used
 - POST /compliance/check (rule-based) + /compliance/check-similarity (per-section cosine similarity, 0.45 flag threshold)
-- POST /classify — document type auto-classification (predicted_type, confidence, auto_selected ≥0.8)
+- POST /classify — document type auto-classification (predicted_type, confidence, auto_selected ≥0.8); wired into web upload flow
 - POST /entities/extract, POST /templates/match
 - POST /evaluate-parser (single doc P/R/F1) + /evaluate-parser/run-batch + GET /evaluate-parser/aggregate
+- POST /checklist/match — shared sentence transformer, returns best-match item + similarity per required_action
+- POST /ocr/add-text-layer — Tesseract OCR via ocrmypdf, adds invisible text layer (eng+msa)
 - services/direction_parser.py — rule-based baseline, NEVER MODIFY (FYP comparison baseline)
-- services/ml_parser.py — loads training/model-best/, returns None if absent (triggers fallback)
-- services/ml_models.py — @lru_cache singleton for paraphrase-multilingual-MiniLM-L12-v2 (shared by similarity_scorer + classifier — reuse this for checklist matching)
+- services/ml_parser.py — HuggingFace BERT NER, trained model in training/model-best/ (gitignored); returns None if absent (triggers fallback)
+- services/ml_models.py — @lru_cache singleton for paraphrase-multilingual-MiniLM-L12-v2 (shared by similarity_scorer, classifier, checklist matcher — do NOT load a second instance)
+- Deployed via Docker on Render (Dockerfile installs tesseract-ocr, tesseract-ocr-msa, ghostscript)
 
 ---
 
-## Latest Client Feedback (drives current work)
+## Latest Client Feedback (all implemented)
 
-| Feedback | Action |
+| Feedback | Status |
 |---|---|
-| "Nak tahu progression of normal case" + wants an ordered checklist of things to do per case | **BUILD: Case Progression Checklist** (see spec below) |
-| "Nak tahu sample data in real life situation" | **BUILD: realistic demo seed script** |
-| "Macam mana tagging document" | **BUILD: document tags** |
-| "Overall summary of case file → tak perlu" | Confirms case summary AI stays dropped ✅ |
-| Arahan is short, mostly 1 sentence | ML annotation/training note (above) ✅ |
-| Court system already assigns arahan to firm | Confirms scope boundary — we process arahan, not receive them ✅ |
-| Associates informally decide who handles which case | assigned_to field already covers this lightly ✅ |
+| "Nak tahu progression of normal case" + wants an ordered checklist of things to do per case | ✅ Case Progression Checklist — built, seeded with "Standard Civil Suit (Plaintiff)" + "Trial Bundle Checklist" templates |
+| "Nak tahu sample data in real life situation" | ✅ Demo seed script — `npm run seed:demo`, 3 cases at different stages |
+| "Macam mana tagging document" | ✅ Document tags — tag chips on create/edit/list; filter by tag |
+| "Overall summary of case file → tak perlu" | ✅ Case summary AI stays dropped |
+| Arahan is short, mostly 1 sentence | ✅ Used in ML training: 17 examples (5 base + 12 augmented), BERT, dev F1 = 0.786 |
+| Court system already assigns arahan to firm | ✅ Scope boundary confirmed — we process arahan, not receive them |
+| Associates informally decide who handles which case | ✅ assigned_to (associate) + partner_id fields on case_files |
 
 ---
 
@@ -181,7 +184,7 @@ Client confirmed files are assigned to BOTH a partner and an associate (partner'
 4. *(Trial date fixing)* "Dokumen pra-perbicaraan adalah lengkap. Tarikh-tarikh perbicaraan adalah ditetapkan pada 22.03.2027 hingga 26.03.2027. Pihak-pihak sila failkan pernyataan saksi 2 minggu sebelum perbicaraan."
 5. *(Post-trial directions)* "Pihak-pihak untuk memfailkan hujahan bertulis dan ikatan autoriti sebelum atau pada 12.06.2027... Keputusan ditetapkan pada 15.07.2027. Pihak-pihak perlu hadir secara fizikal."
 
-**ML training note (sensitivity-safe path):** these 5 examples are generic/template-style, not real case extracts — safe to use directly. Strategy: (1) ask client for more examples in this same generic style covering other stages, rather than real case arahan; (2) synthetically augment these 5 by varying dates/deadlines/court names/party roles to reach the 15-20 target; (3) document this augmentation approach honestly in the FYP report as a response to a real confidentiality constraint — this is a legitimate methodology, not a shortcut.
+**ML training (DONE):** Used 5 base examples + 12 synthetic augmentations (varying dates/deadlines/court names/party roles) = 17 total annotated arahan. BERT NER pipeline (HuggingFace), best dev F1 = 0.786 at epoch 7. LOGOCV evaluation (N=15, no leakage): ML macro F1 = 0.750 ± 0.21, rule-based = 0.461 on same data. Synthetic augmentation methodology documented in FYP report as a legitimate response to the client confidentiality constraint — not a shortcut.
 
 **Documented limitation (do not build, just note in report):** client describes track-changed amendments going back and forth between reviewer and drafter. System does not support inline document redlining/annotation — flagged as a known limitation / future work item, not a gap to fix now.
 
@@ -252,7 +255,7 @@ Caveat to note in report: OCR text layer may contain occasional misreads — Tes
 
 ---
 
-## NEW FEATURE: Case Progression Checklist (Matter Playbook)
+## DONE: Case Progression Checklist (Matter Playbook)
 
 **Concept:** A predefined, ordered list of steps a case is expected to go through (e.g. Letter of Demand → File Writ → Serve → Memorandum of Appearance → Defence → Case Management → Witness Statements → Trial). Admin/associates define reusable templates; when a case is created (or later), a template is applied and its items are copied to the case. Case members tick items off. Case detail shows a progress bar (e.g. 6/14 done).
 
@@ -348,7 +351,7 @@ Also seed the second template **"Trial Bundle Checklist"** as specified above (9
 
 ---
 
-## NEW: Document Tags
+## DONE: Document Tags
 - `documents.tags text[]` column (in SQL above)
 - Web: tag chips input on document create/edit; tag chips shown on list + detail; tag filter dropdown on documents list
 - Backend: accept tags array on create/update; GET /api/documents?tag= filter
@@ -356,7 +359,7 @@ Also seed the second template **"Trial Bundle Checklist"** as specified above (9
 
 ---
 
-## NEW: Demo Seed Data Script
+## DONE: Demo Seed Data Script
 Create `legal-system-backend/src/seed/demoSeed.js`, runnable via `npm run seed:demo`:
 - 3 cases at different life stages:
   - Case A (new): just created, checklist applied, 1 item done, 1 upcoming stage
@@ -374,17 +377,27 @@ POST /api/documents/:id/strip-annotations    # associate; removes annotations fr
 
 ---
 
-1. **Run new SQL**: `partner_id`, `intake_brief`, `party_role` columns on case_files, and the 3 `final_pdf_url`/`final_pdf_name`/`filing_checks` columns on documents
-2. **Pre-Filing Validation Checker** — schema (above), upload-filing-pdf endpoint with 3 deterministic checks, web UI checklist panel on document detail, gate on the file transition with acknowledgement override
-3. **Case Progression Checklist** — schema, backend routes, web UI on case detail, template manager, AI matching endpoint + suggestion banner; seed BOTH "Standard Civil Suit (Plaintiff)" AND "Trial Bundle Checklist" templates
-4. **Demo seed data script** — enables client review, UAT, and report screenshots; use the real arahan examples and guideline links from the Firm Operations document
-5. **Document tags** — small, client-requested
-6. **Update case create/edit UI** — capture `assigned_to` (associate), new `partner_id`, new `intake_brief` textarea, new `party_role` select; display intake_brief prominently at top of Case Detail page
-7. **Seed guidelines** with the 6 real URLs from the Firm Operations document
-8. **Deployment** — web → Vercel; backend → Render/Railway; AI service → Render; enables remote UAT with the firm (FYP II requires testing on identified users)
-9. **ML training + evaluation** — use the 5 client arahan examples as seed, expand via Option A/B in the ML training note above
-10. **Wire /classify into web upload flow** — auto-select document type on upload (small)
-11. **FCM push notifications** — low priority
+## FYP II Status
+
+### Completed (do not rebuild)
+1. ✅ Schema: `partner_id`, `intake_brief`, `party_role` on case_files; `final_pdf_url`, `final_pdf_name`, `filing_checks`, `tags` on documents; checklist tables
+2. ✅ Pre-Filing Validation Checker — upload-filing-pdf endpoint, annotation strip, OCR text-layer fix; full web UI checklist panel with acknowledgement gate
+3. ✅ Case Progression Checklist — backend routes, web UI, template manager, AI suggestion banner; seeded "Standard Civil Suit (Plaintiff)" + "Standard Civil Suit (Defendant)" + "Trial Bundle Checklist"
+4. ✅ Demo seed data script — `npm run seed:demo`, 3 DEMO- cases at different stages
+5. ✅ Document tags — tag chips, filter by tag on list page
+6. ✅ Case create/edit UI — partner_id, intake_brief, party_role fields; intake_brief shown at top of Case Detail
+7. ✅ Guidelines seeded with 6 real client-provided URLs
+8. ✅ Deployment — web on Vercel, backend on Render, AI service on Render (Docker); all live
+9. ✅ ML training — BERT NER, 17 annotated arahan, dev F1 = 0.786; LOGOCV evaluation done (ML 0.750 vs rule-based 0.461)
+10. ✅ /classify wired into web upload flow — auto-selects document type on upload
+11. ✅ UI/UX audit — ProtectedRoute auth bypass fix, busyDoc pattern, toast system, debounced search, colSpan fixes, court_filing deadline category
+
+### FYP II Remaining
+1. **FCM push notifications** — wire the stub in `notificationService.js`; mobile registers FCM token on login; notify on deadline, checklist suggestion, document status changes
+2. **PDF auto-compression** — Ghostscript already in Docker; add "Compress" button next to size-check row; re-validates after compression
+3. **UAT with firm users** — structured testing sessions with intern, associate, partner; task completion rates + SUS questionnaire; document in report
+4. **Compliance ML evaluation** — needs 20–30 completed legal documents from client across 5 document types
+5. **Report writing** — methodology chapter, ML evaluation results, LOGOCV analysis, system screenshots, limitations
 
 ## NOT doing (confirmed)
 - LLM chatbot / "ask about your case" — dilutes research focus, hallucination risk, mention as future work only
@@ -412,13 +425,13 @@ POST /api/documents/:id/strip-annotations    # associate; removes annotations fr
 |---|---|
 | users | All staff — 6 roles, supervisor_id for Level 1 |
 | template_categories / templates | Word file templates |
-| documents | 7-status workflow, case_id link, **tags (new)** |
-| case_files | Cases with structured storage location, **partner_id, intake_brief, party_role (new)** + assigned_to (associate) |
+| documents | 7-status workflow, case_id link, tags, final_pdf_url, final_pdf_name, filing_checks |
+| case_files | Cases with structured storage location, partner_id, intake_brief, party_role, assigned_to (associate) |
 | case_history | Auto audit trail |
 | case_stages | Progression timeline (ai_parsed, confidence) |
-| **checklist_templates (new)** | Reusable matter playbooks — seed 2: "Standard Civil Suit (Plaintiff)" + "Trial Bundle Checklist" |
-| **checklist_template_items (new)** | Ordered items per template |
-| **case_checklist_items (new)** | Instantiated checklist per case |
+| checklist_templates | Reusable matter playbooks — seeded: "Standard Civil Suit (Plaintiff)", "Standard Civil Suit (Defendant)", "Trial Bundle Checklist" |
+| checklist_template_items | Ordered items per template |
+| case_checklist_items | Instantiated checklist per case |
 | firm_deadlines | Practice management reminders |
 | contacts | Directory (address field) |
 | court_guidelines | Categories + PDF, seed with 6 real client-provided URLs |
@@ -428,16 +441,16 @@ New notification types to add: `checklist_item_done`, `checklist_suggestion`
 
 ---
 
-## Client Documents Still Needed (unchanged)
+## Client Documents Status
 
-| Document type | Quantity | Purpose |
+| Document type | Status | Notes |
 |---|---|---|
-| Arahan (mostly 1-sentence) | 15–20 | ML parser training + ground truth |
-| Completed legal documents (5 types) | 20–30 | Compliance ML evaluation |
-| Blank firm templates | 5 | Similarity scoring reference |
-| Physical/handwritten arahan photos | 3–5 | OCR testing |
+| Arahan (1-sentence) | ✅ Done — 17 examples (5 base + 12 synthetic) | ML training complete |
+| Completed legal documents (5 types) | ⏳ Still needed — 20–30 | Required for compliance ML evaluation in FYP II |
+| Blank firm templates | ⏳ Still needed — 5 | For similarity scoring reference |
+| Physical/handwritten arahan photos | ⏳ Still needed — 3–5 | For OCR testing validation |
 
-All redacted: [NAME], [IC_NUMBER], [ADDRESS].
+All documents must be redacted: [NAME], [IC_NUMBER], [ADDRESS].
 
 ---
 
@@ -449,6 +462,8 @@ All redacted: [NAME], [IC_NUMBER], [ADDRESS].
 **Mobile:** `cd mobile && flutter run` (base URL hardcoded to http://10.0.2.2:5000/api)
 
 **Env vars:** Backend `.env` needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, AI_SERVICE_URL (default http://localhost:8000). Web uses Supabase anon key. AI service needs none.
+
+**Production:** Web → Vercel (auto-deploy from main). Backend + AI service → Render (Docker for AI service). AI service URL is hardcoded in render.yaml's AI_SERVICE_URL env var on the backend service.
 
 
 
