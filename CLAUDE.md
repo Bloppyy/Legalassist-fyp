@@ -250,8 +250,11 @@ The OCR fix was originally deferred but has been implemented in FYP II:
 
 Caveat to note in report: OCR text layer may contain occasional misreads — Tesseract accuracy on Malaysian BM/EN mixed text is high but not perfect. The visible page is unchanged; only the searchable/copyable layer is affected.
 
-### Deferred to FYP II — Auto-compression (still deferred)
-- **Auto-compression fix** for the size check — downsampling images / stripping duplicate font data (e.g. via Ghostscript or pikepdf) to bring oversized PDFs under 50MB. Remains deferred due to risk of degrading scanned exhibit/signature quality below usable for actual court submission. Oversized files remain flagged only — associate manually resolves.
+### Auto-compression (BUILT — FYP II)
+- **`POST /ocr/compress`** in AI service — Ghostscript `/ebook` preset (150 dpi image downsample + duplicate font strip). Returns the smaller of compressed vs original, so a PDF that is already well-compressed never grows.
+- **`POST /api/documents/:id/compress-pdf`** backend — same pattern as apply-ocr: downloads final_pdf, sends to AI service, overwrites, re-validates filing_checks, writes to case_history.
+- **Web** — "Compress PDF" button appears next to the Size row when `!checks.size_ok`; re-runs all 3 checks on success, resets acknowledgement gate.
+- Caveat in report: Ghostscript /ebook may visibly reduce quality of scanned exhibits at high zoom. Associate should verify the compressed PDF is still acceptable before court submission.
 
 ---
 
@@ -394,7 +397,7 @@ POST /api/documents/:id/strip-annotations    # associate; removes annotations fr
 
 ### FYP II Remaining
 1. **FCM push notifications** — wire the stub in `notificationService.js`; mobile registers FCM token on login; notify on deadline, checklist suggestion, document status changes
-2. **PDF auto-compression** — Ghostscript already in Docker; add "Compress" button next to size-check row; re-validates after compression
+2. ✅ **PDF auto-compression** — `POST /ocr/compress` in AI service (Ghostscript /ebook preset); `POST /api/documents/:id/compress-pdf` backend; "Compress PDF" button in Size row of filing panel, re-validates and resets acknowledgement gate
 3. **UAT with firm users** — structured testing sessions with intern, associate, partner; task completion rates + SUS questionnaire; document in report
 4. **Compliance ML evaluation** — needs 20–30 completed legal documents from client across 5 document types
 5. **Report writing** — methodology chapter, ML evaluation results, LOGOCV analysis, system screenshots, limitations

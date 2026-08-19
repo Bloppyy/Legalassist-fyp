@@ -166,6 +166,19 @@ const applyOcrTextLayer = async (pdfBuffer, filename) => {
   return Buffer.from(await res.arrayBuffer());
 };
 
+const compressPdf = async (pdfBuffer, filename) => {
+  const form = new FormData();
+  form.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), filename);
+
+  const res = await fetch(`${AI_SERVICE_URL}/ocr/compress`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) throw new Error(`Compression service error: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+};
+
 module.exports = {
   checkCompliance,
   extractEntities,
@@ -178,4 +191,5 @@ module.exports = {
   getAggregateEvaluation,
   matchChecklistItems,
   applyOcrTextLayer,
+  compressPdf,
 };

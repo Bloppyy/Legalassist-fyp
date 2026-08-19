@@ -98,5 +98,6 @@ router.post('/:id/classify', documentsController.classifyDocument);
 router.post('/:id/upload-filing-pdf', authorize('associate'), uploadPdf.single('file'), documentsController.uploadFilingPdf);
 router.post('/:id/strip-annotations', authorize('associate'), documentsController.stripAnnotationsPdf);
 router.post('/:id/apply-ocr', authorize('associate'), documentsController.applyOcrTextLayer);
+router.post('/:id/compress-pdf', authorize('associate'), documentsController.compressPdf);
 
 module.exports = router;

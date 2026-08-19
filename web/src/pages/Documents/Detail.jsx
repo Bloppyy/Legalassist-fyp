@@ -4,7 +4,7 @@ import {
   getDocument, updateDocument, submitDocument, escalateDocument,
   approveDocument, rejectDocument, fileDocument, serveDocument,
   downloadDocument, reuploadDocument, checkCompliance, checkSimilarity, extractEntities,
-  uploadFilingPdf, stripAnnotationsDoc, applyOcrTextLayer,
+  uploadFilingPdf, stripAnnotationsDoc, applyOcrTextLayer, compressDocumentPdf,
 } from '../../api/documents';
 import { useAuth } from '../../context/AuthContext';
 import { STATUS_COLORS } from '../../constants/colors';
@@ -42,6 +42,7 @@ export default function DocumentDetail() {
   const [filingAcknowledged, setFilingAcknowledged] = useState(false);
   const [strippingAnnotations, setStrippingAnnotations] = useState(false);
   const [applyingOcr, setApplyingOcr] = useState(false);
+  const [compressingPdf, setCompressingPdf] = useState(false);
   const reuploadRef = useRef();
   const filingPdfRef = useRef();
 
@@ -170,6 +171,17 @@ export default function DocumentDetail() {
     } catch (err) {
       setActionError(err.response?.data?.message ?? 'OCR failed');
     } finally { setApplyingOcr(false); }
+  };
+
+  const handleCompressPdf = async () => {
+    setCompressingPdf(true); setActionError('');
+    try {
+      const res = await compressDocumentPdf(id);
+      setFilingChecks(res.data.data.filing_checks);
+      setFilingAcknowledged(false);
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'Compression failed');
+    } finally { setCompressingPdf(false); }
   };
 
   const handleExtractEntities = async () => {
@@ -312,6 +324,8 @@ export default function DocumentDetail() {
           handleStripAnnotations={handleStripAnnotations}
           applyingOcr={applyingOcr}
           handleApplyOcr={handleApplyOcr}
+          compressingPdf={compressingPdf}
+          handleCompressPdf={handleCompressPdf}
           filingAcknowledged={filingAcknowledged}
           setFilingAcknowledged={setFilingAcknowledged}
           handleFile={handleFile}
@@ -501,6 +515,7 @@ function FilingPanel({
   uploadingFilingPdf, handleUploadFilingPdf,
   strippingAnnotations, handleStripAnnotations,
   applyingOcr, handleApplyOcr,
+  compressingPdf, handleCompressPdf,
   filingAcknowledged, setFilingAcknowledged,
   handleFile, styles,
 }) {
@@ -538,6 +553,11 @@ function FilingPanel({
             <span className={styles.filingCheckValue}>
               {checks.size_mb} MB {!checks.size_ok && '— exceeds 50 MB limit'}
             </span>
+            {!checks.size_ok && (
+              <button className={styles.filingFixBtn} onClick={handleCompressPdf} disabled={compressingPdf}>
+                {compressingPdf ? 'Compressing…' : 'Compress PDF'}
+              </button>
+            )}
           </div>
 
           <div className={styles.filingCheckRow}>
