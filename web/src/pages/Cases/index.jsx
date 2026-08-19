@@ -44,7 +44,10 @@ export default function Cases() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [search, statusFilter]);
+  useEffect(() => {
+    const t = setTimeout(load, 350);
+    return () => clearTimeout(t);
+  }, [search, statusFilter]);
 
   const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); setError(''); };
   const openEdit = (c) => {

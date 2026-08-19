@@ -26,7 +26,10 @@ export default function Contacts() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [search]);
+  useEffect(() => {
+    const t = setTimeout(load, 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); setError(''); };
   const openEdit = (c) => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getCases, getCase } from '../../api/cases';
 import {
   getCaseStages, createCaseStage, updateCaseStage, deleteCaseStage,
-  toggleCaseStageComplete, parseDirection, downloadStageFile,
+  toggleCaseStageComplete, parseDirection, parseDirectionText, downloadStageFile,
 } from '../../api/caseStages';
 import { useAuth } from '../../context/AuthContext';
 import { STAGE_COLORS } from '../../constants/colors';
@@ -139,7 +139,9 @@ export default function Timeline() {
   const [formError, setFormError] = useState('');
 
   const [showUpload, setShowUpload] = useState(false);
+  const [arahanMode, setArahanMode] = useState('file');
   const [arahanFile, setArahanFile] = useState(null);
+  const [arahanText, setArahanText] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
 
@@ -239,12 +241,18 @@ export default function Timeline() {
 
   const handleParseArahan = async (e) => {
     e.preventDefault();
-    if (!arahanFile) return;
+    if (arahanMode === 'file' && !arahanFile) return;
+    if (arahanMode === 'text' && !arahanText.trim()) return;
     setParsing(true); setParseError('');
     try {
-      const fd = new FormData();
-      fd.append('file', arahanFile);
-      const res = await parseDirection(selectedCaseId, fd);
+      let res;
+      if (arahanMode === 'text') {
+        res = await parseDirectionText(selectedCaseId, arahanText.trim());
+      } else {
+        const fd = new FormData();
+        fd.append('file', arahanFile);
+        res = await parseDirection(selectedCaseId, fd);
+      }
       const parsed = res.data.data;
       setForm({
         stage_type:       'court_direction',
@@ -485,19 +493,29 @@ export default function Timeline() {
               Upload a court direction document (PDF or Word). AI will extract the key fields and pre-fill the stage form.
             </p>
             {parseError && <div className={styles.formError}>{parseError}</div>}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <button type="button" onClick={() => setArahanMode('file')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: '1px solid var(--color-border)', background: arahanMode === 'file' ? 'var(--color-primary)' : 'var(--color-surface)', color: arahanMode === 'file' ? '#fff' : 'inherit', cursor: 'pointer', fontSize: 13 }}>Upload File</button>
+              <button type="button" onClick={() => setArahanMode('text')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: '1px solid var(--color-border)', background: arahanMode === 'text' ? 'var(--color-primary)' : 'var(--color-surface)', color: arahanMode === 'text' ? '#fff' : 'inherit', cursor: 'pointer', fontSize: 13 }}>Paste Text</button>
+            </div>
             <form onSubmit={handleParseArahan} className={styles.form}>
-              <div className={styles.field}>
-                <label>Arahan File *</label>
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-                  onChange={e => setArahanFile(e.target.files[0] ?? null)}
-                  required
-                />
-              </div>
+              {arahanMode === 'file' ? (
+                <div className={styles.field}>
+                  <label>Arahan File *</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                    onChange={e => setArahanFile(e.target.files[0] ?? null)}
+                  />
+                </div>
+              ) : (
+                <div className={styles.field}>
+                  <label>Arahan Text *</label>
+                  <textarea rows={5} value={arahanText} onChange={e => setArahanText(e.target.value)} placeholder="Paste the court direction text here…" style={{ resize: 'vertical' }} />
+                </div>
+              )}
               <div className={styles.modalActions}>
-                <button type="button" onClick={() => setShowUpload(false)}>Cancel</button>
-                <button type="submit" className={styles.btnPrimary} disabled={parsing || !arahanFile}>
+                <button type="button" onClick={() => { setShowUpload(false); setArahanText(''); setArahanFile(null); }}>Cancel</button>
+                <button type="submit" className={styles.btnPrimary} disabled={parsing || (arahanMode === 'file' ? !arahanFile : !arahanText.trim())}>
                   {parsing ? 'Parsing…' : 'Parse with AI'}
                 </button>
               </div>

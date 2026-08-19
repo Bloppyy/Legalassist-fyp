@@ -34,6 +34,7 @@ export default function Documents() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [busyDoc, setBusyDoc] = useState(null);
   const [classifyHint, setClassifyHint] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [escalateModal, setEscalateModal] = useState(null);
@@ -86,29 +87,19 @@ export default function Documents() {
     finally { setSaving(false); }
   };
 
-  const handleSubmit = async (id) => {
-    setActionError('');
-    try { await submitDocument(id); load(); }
+  const withBusy = (id, action, fn) => async () => {
+    const key = `${id}:${action}`;
+    if (busyDoc === key) return;
+    setBusyDoc(key); setActionError('');
+    try { await fn(); load(); }
     catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
+    finally { setBusyDoc(null); }
   };
 
-  const handleApprove = async (id) => {
-    setActionError('');
-    try { await approveDocument(id); load(); }
-    catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
-  };
-
-  const handleFile = async (id) => {
-    setActionError('');
-    try { await fileDocument(id); load(); }
-    catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
-  };
-
-  const handleServe = async (id) => {
-    setActionError('');
-    try { await serveDocument(id); load(); }
-    catch (err) { setActionError(err.response?.data?.message ?? 'Failed'); }
-  };
+  const handleSubmit = (id) => withBusy(id, 'submit', () => submitDocument(id))();
+  const handleApprove = (id) => withBusy(id, 'approve', () => approveDocument(id))();
+  const handleFile = (id) => withBusy(id, 'file', () => fileDocument(id))();
+  const handleServe = (id) => withBusy(id, 'serve', () => serveDocument(id))();
 
   const handleReject = async (comments) => {
     setActionError('');
@@ -286,22 +277,22 @@ export default function Documents() {
                   <td className={styles.rowActions}>
                     <button onClick={() => handleCheck(d.id)} disabled={checkingId === d.id}>{checkingId === d.id ? '…' : 'Check'}</button>
                     {[...LEVEL_1, 'associate'].includes(role) && ['draft','rejected'].includes(d.status) && (
-                      <button className={styles.btnPrimary} onClick={() => handleSubmit(d.id)}>Submit</button>
+                      <button className={styles.btnPrimary} onClick={() => handleSubmit(d.id)} disabled={busyDoc === `${d.id}:submit`}>{busyDoc === `${d.id}:submit` ? '…' : 'Submit'}</button>
                     )}
                     {role === 'associate' && d.status === 'pending_associate' && (<>
-                      <button className={styles.btnSuccess} onClick={() => handleApprove(d.id)}>Approve</button>
+                      <button className={styles.btnSuccess} onClick={() => handleApprove(d.id)} disabled={busyDoc === `${d.id}:approve`}>{busyDoc === `${d.id}:approve` ? '…' : 'Approve'}</button>
                       <button className={styles.btnSuccess} onClick={() => setEscalateModal(d.id)}>Escalate</button>
                       <button className={styles.btnDanger} onClick={() => setRejectModal(d.id)}>Reject</button>
                     </>)}
                     {role === 'associate' && d.status === 'approved' && (
-                      <button className={styles.btnSuccess} onClick={() => handleFile(d.id)}>Mark Filed</button>
+                      <button className={styles.btnSuccess} onClick={() => handleFile(d.id)} disabled={busyDoc === `${d.id}:file`}>{busyDoc === `${d.id}:file` ? '…' : 'Mark Filed'}</button>
                     )}
                     {role === 'partner' && d.status === 'pending_partner' && (<>
-                      <button className={styles.btnSuccess} onClick={() => handleApprove(d.id)}>Approve</button>
+                      <button className={styles.btnSuccess} onClick={() => handleApprove(d.id)} disabled={busyDoc === `${d.id}:approve`}>{busyDoc === `${d.id}:approve` ? '…' : 'Approve'}</button>
                       <button className={styles.btnDanger} onClick={() => setRejectModal(d.id)}>Reject</button>
                     </>)}
                     {role === 'admin' && d.status === 'filed' && (
-                      <button className={styles.btnSuccess} onClick={() => handleServe(d.id)}>Mark Served</button>
+                      <button className={styles.btnSuccess} onClick={() => handleServe(d.id)} disabled={busyDoc === `${d.id}:serve`}>{busyDoc === `${d.id}:serve` ? '…' : 'Mark Served'}</button>
                     )}
                   </td>
                 </tr>

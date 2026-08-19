@@ -63,7 +63,10 @@ export default function Users() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [search, roleFilter]);
+  useEffect(() => {
+    const t = setTimeout(load, 350);
+    return () => clearTimeout(t);
+  }, [search, roleFilter]);
 
   const openEdit = (user) => {
     setEditModal(user);
