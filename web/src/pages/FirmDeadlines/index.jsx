@@ -271,6 +271,7 @@ export default function FirmDeadlines() {
               {showCompleted && (
                 <div className={styles.tableWrap} style={{ marginTop: 0, borderTop: 'none', borderRadius: '0 0 var(--radius) var(--radius)' }}>
                   <table>
+                    <thead><tr><th>Title</th><th>Category</th><th>Date</th><th>Case</th><th colSpan={3}>Remarks</th><th></th></tr></thead>
                     <tbody>
                       {completed.map(d => {
                         const cat = CAT_MAP[d.category];

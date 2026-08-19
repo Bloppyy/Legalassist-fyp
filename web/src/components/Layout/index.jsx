@@ -22,6 +22,7 @@ export default function Layout({ children }) {
   const { profile, logout } = useAuth();
   const navigate = useNavigate();
   const [searchQ, setSearchQ] = useState('');
+  const [searchErr, setSearchErr] = useState('');
 
   const handleLogout = async () => {
     await logout();
@@ -32,8 +33,12 @@ export default function Layout({ children }) {
     e.preventDefault();
     const q = searchQ.trim();
     if (q.length >= 3) {
+      setSearchErr('');
       navigate(`/search?q=${encodeURIComponent(q)}`);
       setSearchQ('');
+    } else {
+      setSearchErr('Enter at least 3 characters');
+      setTimeout(() => setSearchErr(''), 2500);
     }
   };
 
@@ -73,9 +78,10 @@ export default function Layout({ children }) {
               type="text"
               placeholder="Search cases, documents, contacts… (min 3 chars)"
               value={searchQ}
-              onChange={e => setSearchQ(e.target.value)}
+              onChange={e => { setSearchQ(e.target.value); if (searchErr) setSearchErr(''); }}
             />
             <button type="submit" className={styles.searchBtn}>Search</button>
+            {searchErr && <span style={{ position: 'absolute', top: '100%', left: 0, fontSize: 11, color: 'var(--color-danger)', marginTop: 2, whiteSpace: 'nowrap' }}>{searchErr}</span>}
           </form>
         </div>
         <main className={styles.content}>{children}</main>

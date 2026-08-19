@@ -25,6 +25,7 @@ export default function ParserStats() {
 
   const handleRunBatch = async () => {
     setEvalLoading(true);
+    setError('');
     try {
       const res = await runBatchEvaluation();
       setEvalData(res.data.data);

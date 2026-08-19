@@ -162,7 +162,7 @@ export default function Cases() {
           <table>
             <thead><tr><th>Case No.</th><th>File No.</th><th>Year</th><th>Client</th><th>Status</th><th>Associate</th><th>Partner</th><th></th></tr></thead>
             <tbody>
-              {cases.length === 0 && <tr><td colSpan={7} className={styles.empty}>No cases found.</td></tr>}
+              {cases.length === 0 && <tr><td colSpan={8} className={styles.empty}>No cases found.</td></tr>}
               {cases.map((c) => (
                 <tr key={c.id}>
                   <td><Link to={`/cases/${c.id}`}>{c.case_number}</Link></td>

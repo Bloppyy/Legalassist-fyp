@@ -83,6 +83,7 @@ export default function Dashboard() {
   const userId = profile?.id;
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [stats, setStats] = useState({ cases: 0, documents: 0, deadlines: 0, unread: 0 });
   const [upcomingStages, setUpcomingStages] = useState([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
@@ -138,6 +139,8 @@ export default function Dashboard() {
           const today = new Date().toISOString().split('T')[0];
           setOverdueDeadlines(allDeadlines.filter(d => d.deadline_date < today && !d.is_completed));
         }
+      } catch (err) {
+        setLoadError('Could not load dashboard data. Please refresh the page.');
       } finally {
         setLoading(false);
       }
@@ -149,6 +152,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      {loadError && <div style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 13 }}>{loadError}</div>}
       <h2 className={styles.greeting}>Welcome back, {profile?.name?.split(' ')[0] ?? 'there'}</h2>
       <p className={styles.role}>Signed in as <strong>{role}</strong></p>
 

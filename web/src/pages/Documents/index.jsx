@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   getDocuments, createDocument, submitDocument, approveDocument,
   rejectDocument, escalateDocument, fileDocument, serveDocument,
@@ -21,8 +21,9 @@ export default function Documents() {
   const [docs, setDocs] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [cases, setCases] = useState([]);
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState('');
-  const [caseFilter, setCaseFilter] = useState('');
+  const [caseFilter, setCaseFilter] = useState(searchParams.get('case_id') ?? '');
   const [tagFilter, setTagFilter] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [formTags, setFormTags] = useState([]);

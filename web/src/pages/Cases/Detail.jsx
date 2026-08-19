@@ -287,7 +287,7 @@ export default function CaseDetail() {
       <div className={styles.section} style={{ marginTop: 20 }}>
         <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>Documents</h3>
-          <Link to={`/documents`} style={{ fontSize: 13, color: 'var(--color-primary)' }}>View all →</Link>
+          <Link to={`/documents?case_id=${id}`} style={{ fontSize: 13, color: 'var(--color-primary)' }}>View all →</Link>
         </div>
         {docsLoading ? (
           <div style={{ padding: '14px 20px' }}><p>Loading…</p></div>
@@ -412,17 +412,18 @@ function ChecklistSection({ caseId, canWrite, reloadKey }) {
     try {
       await updateCaseItem(caseId, item.id, { status: newStatus });
       load();
-    } catch { /* silently ignore */ }
+    } catch (e) { setErr(e.response?.data?.message ?? 'Failed to update item'); }
   };
 
   const handleSkip = async (item) => {
     try { await updateCaseItem(caseId, item.id, { status: 'skipped' }); load(); }
-    catch { /* ignore */ }
+    catch (e) { setErr(e.response?.data?.message ?? 'Failed to skip item'); }
   };
 
   const handleDelete = async (itemId) => {
+    if (!window.confirm('Remove this checklist item?')) return;
     try { await deleteCaseItem(caseId, itemId); load(); }
-    catch { /* ignore */ }
+    catch (e) { setErr(e.response?.data?.message ?? 'Failed to delete item'); }
   };
 
   if (loading) return null;

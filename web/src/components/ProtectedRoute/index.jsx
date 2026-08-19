@@ -10,7 +10,7 @@ export default function ProtectedRoute({ children, roles }) {
 
   if (loading) return <div className="page-loading">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && profile && !roles.includes(profile.role)) {
+  if (roles && (!profile || !roles.includes(profile.role))) {
     return <Navigate to="/" replace />;
   }
 
