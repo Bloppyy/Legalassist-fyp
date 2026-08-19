@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import { getCases, createCase, updateCase, deleteCase } from '../../api/cases';
 import { getUsers } from '../../api/users';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +18,7 @@ export default function Cases() {
   const { profile } = useAuth();
   const canWrite = ['associate', 'partner', 'admin'].includes(profile?.role);
   const canDelete = ['partner', 'admin'].includes(profile?.role);
+  const toast = useToast();
 
   const [cases, setCases] = useState([]);
   const [associates, setAssociates] = useState([]);
@@ -74,8 +76,8 @@ export default function Cases() {
         party_role: form.party_role || null,
         intake_brief: form.intake_brief || null,
       };
-      if (editing) await updateCase(editing, payload);
-      else await createCase(payload);
+      if (editing) { await updateCase(editing, payload); toast('Case updated'); }
+      else { await createCase(payload); toast('Case created'); }
       setShowForm(false); load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Failed to save');

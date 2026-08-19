@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { getFirmDeadlines, createFirmDeadline, updateFirmDeadline, toggleFirmDeadline, deleteFirmDeadline } from '../../api/firmDeadlines';
+import { useToast } from '../../context/ToastContext';
 import { getCases } from '../../api/cases';
 import { useAuth } from '../../context/AuthContext';
 import styles from './styles.module.css';
 
 const CATEGORIES = [
+  { value: 'court_filing',        label: 'Court Filing',        icon: '⚖️' },
   { value: 'internal_drafting',   label: 'Internal Drafting',   icon: '📝' },
   { value: 'client_update',       label: 'Client Update',       icon: '👤' },
   { value: 'file_review',         label: 'File Review',         icon: '📁' },
@@ -31,6 +33,7 @@ function isOverdue(dateStr, completed) {
 export default function FirmDeadlines() {
   const { profile } = useAuth();
   const canWrite = ['associate', 'partner', 'admin'].includes(profile?.role);
+  const toast = useToast();
 
   const [deadlines, setDeadlines] = useState([]);
   const [cases, setCases] = useState([]);
@@ -88,8 +91,8 @@ export default function FirmDeadlines() {
         actual_deadline_date: form.actual_deadline_date || undefined,
         category:             form.category || undefined,
       };
-      if (editing) await updateFirmDeadline(editing, payload);
-      else         await createFirmDeadline(payload);
+      if (editing) { await updateFirmDeadline(editing, payload); toast('Deadline updated'); }
+      else         { await createFirmDeadline(payload); toast('Deadline created'); }
       setShowForm(false); load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Failed to save');
@@ -97,8 +100,8 @@ export default function FirmDeadlines() {
   };
 
   const handleToggle = async (id) => {
-    try { await toggleFirmDeadline(id); load(); }
-    catch (err) { alert(err.response?.data?.message ?? 'Failed'); }
+    try { await toggleFirmDeadline(id); load(); toast('Updated'); }
+    catch (err) { toast(err.response?.data?.message ?? 'Failed', 'error'); }
   };
 
   const handleDelete = async (id) => {

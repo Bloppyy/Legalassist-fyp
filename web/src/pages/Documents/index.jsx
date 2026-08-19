@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import {
   getDocuments, createDocument, submitDocument, approveDocument,
   rejectDocument, escalateDocument, fileDocument, serveDocument,
@@ -17,6 +18,7 @@ export default function Documents() {
   const { profile } = useAuth();
   const role = profile?.role;
   const canCreate = [...LEVEL_1, 'associate'].includes(role);
+  const toast = useToast();
 
   const [docs, setDocs] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -69,6 +71,7 @@ export default function Documents() {
       formTags.forEach(t => fd.append('tags', t));
       const res = await createDocument(fd);
       const newId = res.data.data?.id;
+      toast('Document created');
       setShowForm(false);
       setForm({ title: '', template_id: '', case_id: '' });
       setFormTags([]);

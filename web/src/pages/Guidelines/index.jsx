@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getGuidelines, createGuideline, updateGuideline, deleteGuideline, downloadGuideline } from '../../api/guidelines';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import styles from './styles.module.css';
 
 const CATEGORIES = [
@@ -16,6 +17,7 @@ const EMPTY_FORM = { title: '', content: '', category: '', state: '', registry_u
 export default function Guidelines() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const toast = useToast();
 
   const [guidelines, setGuidelines] = useState([]);
   const [catFilter, setCatFilter] = useState('');
@@ -67,8 +69,8 @@ export default function Guidelines() {
       if (form.registry_url) fd.append('registry_url', form.registry_url);
       fd.append('order_index', form.order_index ?? 0);
       if (fileInput) fd.append('file', fileInput);
-      if (editing) await updateGuideline(editing, fd);
-      else await createGuideline(fd);
+      if (editing) { await updateGuideline(editing, fd); toast('Guideline updated'); }
+      else { await createGuideline(fd); toast('Guideline created'); }
       setShowForm(false); load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Failed to save');

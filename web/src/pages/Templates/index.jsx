@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate, downloadTemplate, getCategories, createCategory, deleteCategory } from '../../api/templates';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import styles from './styles.module.css';
 
 const EMPTY_FORM = { title: '', category_id: '', instructions: '' };
@@ -9,6 +10,7 @@ export default function Templates() {
   const { profile } = useAuth();
   const role = profile?.role;
   const canWrite = ['associate', 'partner', 'admin'].includes(role);
+  const toast = useToast();
 
   const [templates, setTemplates] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -63,8 +65,8 @@ export default function Templates() {
       if (form.category_id) fd.append('category_id', form.category_id);
       if (form.instructions) fd.append('instructions', form.instructions);
       if (fileInput) fd.append('file', fileInput);
-      if (editing) await updateTemplate(editing, fd);
-      else await createTemplate(fd);
+      if (editing) { await updateTemplate(editing, fd); toast('Template updated'); }
+      else { await createTemplate(fd); toast('Template created'); }
       setShowForm(false); load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Failed to save');

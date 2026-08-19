@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getContacts, createContact, updateContact, deleteContact } from '../../api/contacts';
+import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import styles from './styles.module.css';
 
@@ -8,6 +9,7 @@ const EMPTY_FORM = { name: '', job_title: '', address: '', state: '', phone: '',
 export default function Contacts() {
   const { profile } = useAuth();
   const canWrite = ['associate', 'partner', 'admin'].includes(profile?.role);
+  const toast = useToast();
 
   const [contacts, setContacts] = useState([]);
   const [search, setSearch] = useState('');
@@ -42,8 +44,8 @@ export default function Contacts() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setError('');
     try {
-      if (editing) await updateContact(editing, form);
-      else await createContact(form);
+      if (editing) { await updateContact(editing, form); toast('Contact updated'); }
+      else { await createContact(form); toast('Contact created'); }
       setShowForm(false); load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Failed to save');

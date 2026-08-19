@@ -8,6 +8,7 @@ const router = Router();
 
 const ASSOCIATE_PLUS = ['associate', 'partner', 'admin'];
 const CATEGORIES = [
+  'court_filing',
   'internal_drafting', 'client_update', 'file_review', 'document_retention',
   'billing', 'trust_accounting', 'cle', 'insurance', 'other',
 ];

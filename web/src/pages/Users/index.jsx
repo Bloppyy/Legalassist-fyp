@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getUsers, createUser, updateUserRole, updateUserSupervisor, deleteUser } from '../../api/users';
+import { useToast } from '../../context/ToastContext';
 import styles from './styles.module.css';
 
 const ALL_ROLES = ['intern', 'junior_associate', 'chambering', 'associate', 'partner', 'admin'];
@@ -32,6 +33,7 @@ function initials(name) {
 
 export default function Users() {
   const { profile } = useAuth();
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [associates, setAssociates] = useState([]);
   const [search, setSearch] = useState('');
@@ -82,6 +84,7 @@ export default function Users() {
       if (LEVEL_1_ROLES.includes(editRole)) {
         await updateUserSupervisor(editModal.id, editSupervisor || null);
       }
+      toast('User updated');
       setEditModal(null);
       load();
     } catch (err) {
@@ -95,6 +98,7 @@ export default function Users() {
     try {
       const payload = { ...form, supervisor_id: LEVEL_1_ROLES.includes(form.role) ? (form.supervisor_id || undefined) : undefined };
       await createUser(payload);
+      toast('User created');
       setShowCreate(false);
       setForm(EMPTY_FORM);
       load();

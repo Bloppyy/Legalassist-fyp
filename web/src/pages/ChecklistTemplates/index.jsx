@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   getTemplates, createTemplate, updateTemplate, deleteTemplate,
   addTemplateItem, updateTemplateItem, removeTemplateItem,
@@ -15,6 +16,7 @@ export default function ChecklistTemplates() {
   const { profile } = useAuth();
   const role = profile?.role;
   const canWrite = CAN_WRITE.includes(role);
+  const toast = useToast();
   const isAdmin = role === 'admin';
 
   const [templates, setTemplates] = useState([]);
@@ -51,6 +53,7 @@ export default function ChecklistTemplates() {
     setSavingNew(true);
     try {
       await createTemplate(newForm);
+      toast('Template created');
       setShowNew(false);
       setNewForm({ name: '', description: '' });
       load();
@@ -63,6 +66,7 @@ export default function ChecklistTemplates() {
     e.preventDefault();
     try {
       await updateTemplate(editTpl.id, { name: editTpl.name, description: editTpl.description });
+      toast('Template updated');
       setEditTpl(null);
       load();
     } catch (err) { setError(err.response?.data?.message ?? 'Failed to update.'); }
@@ -82,6 +86,7 @@ export default function ChecklistTemplates() {
     setSavingItem(true);
     try {
       await addTemplateItem(templateId, addItemForm);
+      toast('Step added');
       setAddItemFor(null);
       setAddItemForm(EMPTY_ITEM_FORM);
       load();
@@ -99,6 +104,7 @@ export default function ChecklistTemplates() {
         expected_role: item.expected_role || null,
         notes: item.notes || null,
       });
+      toast('Step updated');
       setEditItem(null);
       load();
     } catch (err) { setError(err.response?.data?.message ?? 'Failed to update step.'); }
