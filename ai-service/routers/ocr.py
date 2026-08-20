@@ -57,7 +57,7 @@ async def compress_pdf(file: UploadFile = File(...)):
             [
                 "gs", "-dBATCH", "-dNOPAUSE", "-dQUIET",
                 "-sDEVICE=pdfwrite",
-                "-dPDFSETTINGS=/ebook",   # 150 dpi images; good balance for e-filing
+                "-dPDFSETTINGS=/printer",  # 300 dpi images; safer for scanned exhibits
                 "-dCompatibilityLevel=1.4",
                 f"-sOutputFile={out_path}",
                 str(in_path),

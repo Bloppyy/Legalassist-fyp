@@ -43,6 +43,7 @@ export default function DocumentDetail() {
   const [strippingAnnotations, setStrippingAnnotations] = useState(false);
   const [applyingOcr, setApplyingOcr] = useState(false);
   const [compressingPdf, setCompressingPdf] = useState(false);
+  const [showCompressWarning, setShowCompressWarning] = useState(false);
   const reuploadRef = useRef();
   const filingPdfRef = useRef();
 
@@ -326,6 +327,8 @@ export default function DocumentDetail() {
           handleApplyOcr={handleApplyOcr}
           compressingPdf={compressingPdf}
           handleCompressPdf={handleCompressPdf}
+          showCompressWarning={showCompressWarning}
+          setShowCompressWarning={setShowCompressWarning}
           filingAcknowledged={filingAcknowledged}
           setFilingAcknowledged={setFilingAcknowledged}
           handleFile={handleFile}
@@ -516,6 +519,7 @@ function FilingPanel({
   strippingAnnotations, handleStripAnnotations,
   applyingOcr, handleApplyOcr,
   compressingPdf, handleCompressPdf,
+  showCompressWarning, setShowCompressWarning,
   filingAcknowledged, setFilingAcknowledged,
   handleFile, styles,
 }) {
@@ -553,10 +557,23 @@ function FilingPanel({
             <span className={styles.filingCheckValue}>
               {checks.size_mb} MB {!checks.size_ok && '— exceeds 50 MB limit'}
             </span>
-            {!checks.size_ok && (
-              <button className={styles.filingFixBtn} onClick={handleCompressPdf} disabled={compressingPdf}>
-                {compressingPdf ? 'Compressing…' : 'Compress PDF'}
+            {!checks.size_ok && !showCompressWarning && (
+              <button className={styles.filingFixBtn} onClick={() => setShowCompressWarning(true)} disabled={compressingPdf}>
+                Compress PDF
               </button>
+            )}
+            {!checks.size_ok && showCompressWarning && (
+              <span className={styles.compressWarning}>
+                This will permanently replace your stored PDF with a compressed version (300 dpi). Verify quality before filing.
+                <button
+                  className={styles.filingFixBtn}
+                  onClick={() => { setShowCompressWarning(false); handleCompressPdf(); }}
+                  disabled={compressingPdf}
+                >
+                  {compressingPdf ? 'Compressing…' : 'Proceed'}
+                </button>
+                <button onClick={() => setShowCompressWarning(false)}>Cancel</button>
+              </span>
             )}
           </div>
 
