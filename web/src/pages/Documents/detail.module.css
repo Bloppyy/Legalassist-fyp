@@ -52,9 +52,9 @@
 .filingCheckValue { color: var(--color-text-muted); flex: 1; }
 .filingFixBtn { font-size: 12px; padding: 4px 10px; flex-shrink: 0; }
 .compressWarning { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--color-warning, #92400e); background: var(--color-warning-light, #fef3c7); padding: 6px 10px; border-radius: var(--radius); flex: 1; }
-.filingAcknowledge { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; background: var(--color-warning-light, #fef3c7); padding: 10px 14px; border-radius: var(--radius); color: var(--color-warning, #92400e); width: 100%; box-sizing: border-box; }
-.filingAcknowledge input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
-.filingAcknowledge span { flex: 1; min-width: 0; word-break: break-word; }
+.filingAcknowledge { display: block; font-size: 13px; cursor: pointer; background: var(--color-warning-light, #fef3c7); padding: 10px 14px; border-radius: var(--radius); color: var(--color-warning, #92400e); }
+.filingAcknowledge input { margin-right: 8px; vertical-align: middle; cursor: pointer; flex-shrink: 0; }
+.filingAcknowledge span { vertical-align: middle; }
 .filingActions { display: flex; justify-content: flex-end; margin-top: 4px; }
 
 /* Similarity panel */
