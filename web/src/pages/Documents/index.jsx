@@ -68,7 +68,8 @@ export default function Documents() {
       if (form.template_id) fd.append('template_id', form.template_id);
       if (form.case_id) fd.append('case_id', form.case_id);
       if (fileInput) fd.append('file', fileInput);
-      formTags.forEach(t => fd.append('tags', t));
+      const allTags = tagInput.trim() ? [...formTags, tagInput.trim()] : formTags;
+      allTags.forEach(t => fd.append('tags', t));
       const res = await createDocument(fd);
       const newId = res.data.data?.id;
       toast('Document created');

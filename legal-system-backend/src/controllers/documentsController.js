@@ -603,9 +603,12 @@ const applyOcrTextLayer = async (req, res, next) => {
 
     const original = Buffer.from(await fileBlob.arrayBuffer());
     const ocrResult = await aiService.applyOcrTextLayer(original, doc.final_pdf_name);
+    // ocrmypdf adds invisible Annots entries for its text layer — strip them so
+    // the annotation check doesn't flip back to "fail" after every OCR run.
+    const cleaned = await stripAnnotations(ocrResult);
 
-    await uploadFile(BUCKET, doc.final_pdf_url, ocrResult, 'application/pdf');
-    const checks = await validateFilingPdf(ocrResult);
+    await uploadFile(BUCKET, doc.final_pdf_url, cleaned, 'application/pdf');
+    const checks = await validateFilingPdf(cleaned);
 
     const { data, error } = await supabase
       .from('documents')
@@ -675,6 +678,15 @@ const compressPdf = async (req, res, next) => {
   }
 };
 
+const getFilingPdfUrl = async (req, res, next) => {
+  try {
+    const doc = await fetchDocument(req.params.id);
+    if (!doc.final_pdf_url) return next(createError(404, 'No filing PDF uploaded yet'));
+    const url = await getSignedUrl(BUCKET, doc.final_pdf_url, 300); // 5-min signed URL
+    return sendSuccess(res, { url });
+  } catch (err) { next(err); }
+};
+
 const classifyDocument = async (req, res, next) => {
   try {
     const doc = await fetchDocument(req.params.id);
@@ -694,5 +706,5 @@ const classifyDocument = async (req, res, next) => {
 module.exports = {
   getAll, getOne, create, update, reupload, download, remove,
   submit, escalate, approve, reject, markFiled, markServed, checkCompliance, checkSimilarity, getEntities, classifyDocument,
-  uploadFilingPdf, stripAnnotationsPdf, applyOcrTextLayer, compressPdf,
+  uploadFilingPdf, stripAnnotationsPdf, applyOcrTextLayer, compressPdf, getFilingPdfUrl,
 };

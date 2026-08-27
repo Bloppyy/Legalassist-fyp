@@ -27,3 +27,4 @@ export const uploadFilingPdf      = (id, data) => api.post(`/documents/${id}/upl
 export const stripAnnotationsDoc  = (id) => api.post(`/documents/${id}/strip-annotations`);
 export const applyOcrTextLayer    = (id) => api.post(`/documents/${id}/apply-ocr`);
 export const compressDocumentPdf  = (id) => api.post(`/documents/${id}/compress-pdf`);
+export const getFilingPdfUrl      = (id) => api.get(`/documents/${id}/filing-pdf-url`);

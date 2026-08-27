@@ -4,7 +4,7 @@ import {
   getDocument, updateDocument, submitDocument, escalateDocument,
   approveDocument, rejectDocument, fileDocument, serveDocument,
   downloadDocument, reuploadDocument, checkCompliance, checkSimilarity, extractEntities,
-  uploadFilingPdf, stripAnnotationsDoc, applyOcrTextLayer, compressDocumentPdf,
+  uploadFilingPdf, stripAnnotationsDoc, applyOcrTextLayer, compressDocumentPdf, getFilingPdfUrl,
 } from '../../api/documents';
 import { useAuth } from '../../context/AuthContext';
 import { STATUS_COLORS } from '../../constants/colors';
@@ -174,6 +174,15 @@ export default function DocumentDetail() {
     } finally { setApplyingOcr(false); }
   };
 
+  const handleViewFilingPdf = async () => {
+    try {
+      const res = await getFilingPdfUrl(id);
+      window.open(res.data.data.url, '_blank', 'noopener');
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? 'Could not open filing PDF');
+    }
+  };
+
   const handleCompressPdf = async () => {
     setCompressingPdf(true); setActionError('');
     try {
@@ -332,6 +341,7 @@ export default function DocumentDetail() {
           filingAcknowledged={filingAcknowledged}
           setFilingAcknowledged={setFilingAcknowledged}
           handleFile={handleFile}
+          handleViewFilingPdf={handleViewFilingPdf}
           styles={styles}
         />
       )}
@@ -521,7 +531,7 @@ function FilingPanel({
   compressingPdf, handleCompressPdf,
   showCompressWarning, setShowCompressWarning,
   filingAcknowledged, setFilingAcknowledged,
-  handleFile, styles,
+  handleFile, handleViewFilingPdf, styles,
 }) {
   const checks = filingChecks;
   const allPass = checks && checks.size_ok && checks.copyable_ok && checks.annotations_ok;
@@ -533,7 +543,19 @@ function FilingPanel({
 
       <p className={styles.filingHint}>
         {doc.final_pdf_url
-          ? `Current file: ${doc.final_pdf_name}`
+          ? (
+            <>
+              Current file: {doc.final_pdf_name}{' '}
+              <button
+                type="button"
+                className={styles.filingFixBtn}
+                onClick={handleViewFilingPdf}
+                style={{ marginLeft: 8 }}
+              >
+                View PDF ↗
+              </button>
+            </>
+          )
           : 'Export the approved Word document to PDF and upload it here to run pre-filing checks before marking as filed.'}
       </p>
 
