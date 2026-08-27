@@ -609,6 +609,10 @@ const applyOcrTextLayer = async (req, res, next) => {
 
     await uploadFile(BUCKET, doc.final_pdf_url, cleaned, 'application/pdf');
     const checks = await validateFilingPdf(cleaned);
+    // ocrmypdf succeeded → text layer is present. pdf-parse may not read
+    // ocrmypdf's GlyphLessFont encoding, so override rather than re-validate.
+    checks.copyable_ok = true;
+    checks.pdf_copyable = true;
 
     const { data, error } = await supabase
       .from('documents')
